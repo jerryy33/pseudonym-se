@@ -1,3 +1,4 @@
+# Testfile to check if charm is working
 from charm.toolbox.integergroup import IntegerGroup
 
 group1 = IntegerGroup()
