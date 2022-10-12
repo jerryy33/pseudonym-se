@@ -5,7 +5,7 @@ from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 import redis
 import requests
 
-from hashes import h
+from ...hashes import h
 
 Index = Tuple[str, str]
 
