@@ -27,7 +27,7 @@ def hs(
     return group.hash(w, type=element_type)
 
 
-def h(group: PairingGroup, group_element: Any) -> bytes:
+def h(group: PairingGroup, group_element) -> bytes:
     """Hash function which maps a group element to a hash value,
     which can be used as a secret key.
 
@@ -38,6 +38,6 @@ def h(group: PairingGroup, group_element: Any) -> bytes:
         groupElement (pairing.Element): element in G2 to map to hash value
 
     Returns:
-        bytes:  a hashed group element as bytes
+        bytes: a hashed group element
     """
     return sha256(group.serialize(group_element, compression=False)).digest()
