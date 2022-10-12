@@ -7,19 +7,21 @@ import requests
 
 from hashes import h
 
-app = FastAPI()
-UM_URL = "http://localhost:8080"
-database = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
-print(database.ping())
 Index = Tuple[str, str]
+
+app = FastAPI()
+database = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+
+# Local constants
+USER_KEYS = "UserKeys"
+UM_URL = "http://localhost:8080"
 group_id = requests.get(f"{UM_URL}/publicParams", timeout=10).json()
-# print(group_id)
 group = PairingGroup(group_id)
 
 
 @app.get("/generateIndex")
 def gen_index(user_id: int, hashed_keyword: bytes) -> bytes:
-    com_key = database.get(user_id)
+    com_key = database.hget(USER_KEYS, user_id)
     print(com_key)
     # print(f"Got comp key from database{com_key}")
     # answer = group.serialize(
@@ -45,7 +47,7 @@ def add_record(record: str, index1: str, index2: str) -> Union[bool, None]:
     # set index as key and ciphertext as value
     # print(index1, index2)
     index = index1 + "," + index2
-    return database.set(index, record, nx=True)
+    return database.set(record, index, nx=True)
 
 
 @app.get("/search")
@@ -64,7 +66,7 @@ def add_user(user_id: int, comp_key: bytes) -> Union[bool, None]:
     # set user_id as key and complementary key as value
     # print(
     #   f"Received comp key serialized as {comp_key}, is actually {group.deserialize(comp_key)}")
-    return database.set(user_id, comp_key)
+    return database.hset(USER_KEYS, user_id, comp_key)
 
 
 def revoke_access(user_id: int) -> bool:
@@ -76,7 +78,7 @@ def revoke_access(user_id: int) -> bool:
     Returns:
         bool: true if the user had a single entry that was removed
     """
-    u_comp_key = database.get(user_id)
+    u_comp_key = database.hget(USER_KEYS, user_id)
     print(f"Revoking user with key {u_comp_key}")
     if u_comp_key is not None:
         deleted_rows = database.delete(user_id)
@@ -86,9 +88,7 @@ def revoke_access(user_id: int) -> bool:
     return False
 
 
-# TODO very inefficient because all keys of the redis instance will be retrieved even user ids
-# inserting records with the ciphertext as a kexy instead of the index might help
-# (we can distinguish by datatype than)
+# TODO check performance
 def search(query: Tuple[int, Any]) -> List:
     """Searches for records that fit to the given query.
     If a word is equal to search query is determined through simple equality checks.
@@ -103,7 +103,7 @@ def search(query: Tuple[int, Any]) -> List:
         List: contains all records that equal the search word. None if no record was found or the user
         had no rights to search
     """
-    com_k = database.get(query[0])
+    com_k = database.hget(USER_KEYS, query[0])
     # print(f"Got com key from database as {com_k}")
     if com_k is None:
         return []
@@ -115,9 +115,11 @@ def search(query: Tuple[int, Any]) -> List:
     a = []
     # print(k_1)
     # print(index[1][1])
-    keys = database.keys("*")
-    for index in keys:
-        # print(index)
+    keys = database.scan_iter(_type="String")
+    for key in keys:
+        # print(f"Key is:{key}")
+        index = database.get(key)
+        # print(f"Value is:{index}")
         e_index = index.split(sep=",", maxsplit=1)
         # print("list of indexes", e_index)
         if len(e_index) != 2:
@@ -129,8 +131,5 @@ def search(query: Tuple[int, Any]) -> List:
         if len(inn) < 0:
             print(inn, e_index[0], e_index[1])
         if e_index[0] == inn.decode(errors="replace"):
-            a.append(index)
-    # print(a)
-    if not a:
-        return a
-    return database.mget(a)
+            a.append(key)
+    return a

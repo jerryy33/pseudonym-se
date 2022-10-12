@@ -95,14 +95,20 @@ def enroll(user_id: int, group_element: Any) -> Tuple[bytes, bytes]:
     # print(com_k)
     send_key: bytes = group.serialize(com_k, compression=False)
     print(f"Sending comp key{com_k} to serv serialized as {send_key}")
-    success = requests.post(
+    rows_added = requests.post(
         f"{API_URL}/addUser",
         params={"user_id": user_id, "comp_key": send_key},
         timeout=10,
     ).json()
-    print("Adding user ended with status:", success)
-    if success:
+    print(f"Adding user added {rows_added} to the database")
+    # TODO add database
+    if rows_added == 1:
         UA.append(user_id)
+    elif rows_added == 0:
+        # remove this line if databse exists
+        UA.append(user_id)
+        user_exists = user_id in UA
+        print(f"User already exists: {user_exists}")
     else:
         raise RuntimeError("Adding user failed")
     return xu, seed
