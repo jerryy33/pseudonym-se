@@ -1,9 +1,15 @@
-from typing import Tuple, Any, List
+"""This module represent a data client that can request pseudonyms from a server"""
+import sys
+from typing import Dict, Tuple, Any, List
+import pickle
 import string
 import secrets
 import requests
-from charm.toolbox.pairinggroup import PairingGroup, ZR  # type: ignore
+
+from charm.toolbox.pairinggroup import PairingGroup, ZR
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
+
+sys.path.append(".")
 from hashes import hs, h
 
 
@@ -22,7 +28,7 @@ encryption_key: bytes = values["encKey"]
 encrypter = SymmetricCryptoAbstraction(encryption_key)
 
 
-def add_record(record: str) -> bool:
+def add_record(record: Dict) -> bool:
     """Add an encrypted record to the vault
 
     Args:
@@ -41,7 +47,7 @@ def add_record(record: str) -> bool:
     ).json()
 
 
-def search_for_record(record: str) -> List:
+def search_for_record(keywords: List[str]) -> List:
     """Searches for records in the vault and returns them if they match the search record
 
     Args:
@@ -50,7 +56,7 @@ def search_for_record(record: str) -> List:
     Returns:
         List: a list of matching records
     """
-    query = construct_query(query_key, record)
+    query = construct_query(query_key, keywords)
     return requests.get(
         f"{API_URL}/search",
         params={
@@ -61,7 +67,7 @@ def search_for_record(record: str) -> List:
     ).json()
 
 
-def gen_index(q_key: Any, keyword: str) -> Index:
+def gen_index(q_key: Any, keywords: List[str]) -> Index:
     """Generates a index used for searchable encryption.
     Will send a request to the vault to compute a part for the encryption key
 
@@ -73,7 +79,7 @@ def gen_index(q_key: Any, keyword: str) -> Index:
         Index: a index for the keyword
     """
     random_blind = group.random(ZR)
-    index_request = hs(group, keyword) ** random_blind
+    index_request = hs(group, keywords) ** random_blind
     print(
         f"Sending index request {index_request} serialized as {group.serialize(index_request, compression= False)}"
     )
@@ -96,24 +102,16 @@ def gen_index(q_key: Any, keyword: str) -> Index:
         ** (q_key / random_blind),
     )
     print("Gen index key for enc", k)
-    # print(index_answer ** (qk[0]/random_blind),
-    # group1.pair_prod(hs(None,w), g)** random,
-    # group1.pair_prod(hs(None,w)** qk[0], g ** (random/ qk[0])),
-    # sep='\n \n', end='\n \n')
-    # print((qk[0]/random_blind).type, comK.type,random_blind.type,index_request[1].type,index_answer.type, k)
-    # print(index_answer ** (qk[0]/ random_blind))
     index_encrypter = SymmetricCryptoAbstraction(k)
     res = "".join(
         secrets.choice(string.ascii_uppercase + string.digits) for i in range(16)
     )
     e_index = index_encrypter.encrypt(res)
     i_w = (res, e_index)
-    # print(i_w)
-
     return i_w
 
 
-def write(record_encrypter: SymmetricCryptoAbstraction, document: str) -> Document:
+def write(record_encrypter: SymmetricCryptoAbstraction, document: Dict) -> Document:
     """Generates a index and encrypts a document so that this tuple can be send to the vault
 
     Args:
@@ -123,13 +121,17 @@ def write(record_encrypter: SymmetricCryptoAbstraction, document: str) -> Docume
     Returns:
         Document: a document conating the ciphertext and a matching index
     """
-    i_w = gen_index(query_key, document)
-    cipher_text = record_encrypter.encrypt(document)
+    keywords = [
+        document["data"][key] for key in document["keywords"] if key in document["data"]
+    ]
+    i_w = gen_index(query_key, keywords)
+    encoded_dict = pickle.dumps(document["data"])
+    cipher_text = record_encrypter.encrypt(encoded_dict)
     # print(type(ct), ct)
     return (cipher_text, i_w)
 
 
-def construct_query(q_key: Any, keyword: str) -> Tuple[int, Any]:
+def construct_query(q_key: Any, keywords: List[str]) -> Tuple[int, Any]:
     """Constructs a valid query that is used for searching in the vault
 
     Args:
@@ -139,7 +141,7 @@ def construct_query(q_key: Any, keyword: str) -> Tuple[int, Any]:
     Returns:
         Tuple[int, Any]: a valid query containing the user id and a group element
     """
-    query = hs(group, keyword) ** q_key
+    query = hs(group, keywords) ** q_key
     print(f"Constructed query as {query}")
     return (MY_ID, query)
 
@@ -161,17 +163,24 @@ def generate_random_string(length: int) -> str:
 
 
 if __name__ == "__main__":
-    test_word = "word56789qwertzu"
-    result = add_record(test_word)
+    test_dict = {
+        "keywords": ["name", "surname", "socialSecurityNumber"],
+        "data": {
+            "name": "word123456789qwertz",
+            "surname": "Herbst",
+            "socialSecurityNumber": "1536363",
+        },
+    }
+    result = add_record(test_dict)
     print(result)
-    search_results = search_for_record(test_word)
+    search_results = search_for_record(["word123456789qwertz", "Herbst", "1536363"])
     print(search_results)
-    decoded_words = [encrypter.decrypt(word).decode() for word in search_results]
+    decoded_words = [pickle.loads(encrypter.decrypt(word)) for word in search_results]
     print(decoded_words)
     revoke: bool = requests.post(
         f"{UM_URL}/revoke", params={"user_id": MY_ID}, timeout=10
     ).json()
     print(revoke)
     # should return no records
-    d = search_for_record(test_word)
+    d = search_for_record(["word123456789qwertz", "Herbst", "1536363"])
     print(d)
