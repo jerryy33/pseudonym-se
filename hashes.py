@@ -1,10 +1,15 @@
+"""This module provides hash functions that convert
+from or to a group Element to hashed value or new group element"""
 from hashlib import sha256
 from typing import Optional, Any
 from charm.toolbox.pairinggroup import PairingGroup, G1
 
 
 def hs(
-    group: PairingGroup, w: bytes, element_type=G1, seed: Optional[str] = None
+    group: PairingGroup,
+    object_to_hash: Any,
+    element_type=G1,
+    seed: Optional[str] = None,
 ) -> Any:
     """Hashes a given string with the hash function of the given group element.
 
@@ -24,10 +29,10 @@ def hs(
     """
 
     # TODO find out how to integrate s
-    return group.hash(w, type=element_type)
+    return group.hash(object_to_hash, type=element_type)
 
 
-def h(group: PairingGroup, group_element) -> bytes:
+def h(group: PairingGroup, group_element: Any) -> bytes:
     """Hash function which maps a group element to a hash value,
     which can be used as a secret key.
 
