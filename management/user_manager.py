@@ -1,6 +1,8 @@
+"""This module represents a user-manager that is responsible for rolling out and revoking users
+that want to request pseudonyms"""
+from typing import List, Any, Tuple
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, extract_key  # type: ignore
 from fastapi import FastAPI
-from typing import List, Any, Tuple
 
 import requests
 
@@ -87,7 +89,8 @@ def enroll(user_id: int, group_element: Any) -> Tuple[bytes, bytes]:
         RuntimeError: If a adding a user to the vault failed
 
     Returns:
-        Tuple[bytes, bytes]:  a tuple containing a random element from ZR and the seed generated in setup()
+        Tuple[bytes, bytes]:  a tuple containing a random element from ZR
+        and the seed generated in setup()
     """
     xu = group.random(ZR)
     g = group.random(G1)
