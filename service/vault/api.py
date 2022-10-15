@@ -1,3 +1,4 @@
+"""Api for storing, writing and searching searchable encrypted data"""
 from typing import List, Tuple, Union, Any
 from fastapi import FastAPI
 from charm.toolbox.pairinggroup import PairingGroup
@@ -100,8 +101,8 @@ def search(query: Tuple[int, Any]) -> List:
         at the client side
 
     Returns:
-        List: contains all records that equal the search word. None if no record was found or the user
-        had no rights to search
+        List: contains all records that equal the search word.
+        None if no record was found or the user had no rights to search
     """
     com_k = database.hget(USER_KEYS, query[0])
     # print(f"Got com key from database as {com_k}")
@@ -112,9 +113,7 @@ def search(query: Tuple[int, Any]) -> List:
     # print(f"using query key as {query[1]}")
     k_1 = h(group, group.pair_prod(query[1], com_k))
     aes = SymmetricCryptoAbstraction(k_1)
-    a = []
-    # print(k_1)
-    # print(index[1][1])
+    results = []
     keys = database.scan_iter(_type="String")
     for key in keys:
         # print(f"Key is:{key}")
@@ -131,5 +130,5 @@ def search(query: Tuple[int, Any]) -> List:
         if len(inn) < 0:
             print(inn, e_index[0], e_index[1])
         if e_index[0] == inn.decode(errors="replace"):
-            a.append(key)
-    return a
+            results.append(key)
+    return results
