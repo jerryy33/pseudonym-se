@@ -1,10 +1,11 @@
 """Api for storing, writing and searching searchable encrypted data"""
 import os
 from typing import List, Tuple, Union, Any
+import urllib.parse
 from fastapi import FastAPI, HTTPException
 from charm.toolbox.pairinggroup import PairingGroup
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
-import urllib.parse
+
 import redis
 import requests
 from dotenv import load_dotenv
@@ -155,5 +156,5 @@ def search(query: Tuple[int, Any]) -> List:
 
 
 def generate_pseudonym(record: str) -> str:
-    # TODO
+    # TODO generate valid truly random pseudonym
     return "pseudonym"

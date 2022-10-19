@@ -1,11 +1,10 @@
 """This module represent a data client that can request pseudonyms from a server"""
 import os
-from typing import Dict, Tuple, Any, List
+from typing import Tuple, Any, List
 import pickle
 import string
 import secrets
 import urllib.parse
-from pydantic import BaseModel
 from dotenv import load_dotenv
 import requests
 import redis
@@ -14,7 +13,7 @@ from charm.toolbox.pairinggroup import PairingGroup, ZR
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
+from .models import PseudonymRequest, SecurityDetails
 from ...hashes import hs, h
 
 load_dotenv()
@@ -38,18 +37,6 @@ group = PairingGroup("SS512")
 
 Index = Tuple[str, str]
 Document = Tuple[str, Index]
-
-
-class PseudonymRequest(BaseModel):
-    data: Dict[Any, str]
-    keywords: List[str]
-
-
-class SecurityDetails(BaseModel):
-    query_key: bytes
-    seed: bytes
-    encryption_key: bytes
-    user_id: int
 
 
 @app.put("/receiveSecurityDetails")
@@ -95,7 +82,8 @@ def request_pseudonym(record: PseudonymRequest) -> List:
         print(added_rows)
         if added_rows != 3:
             print(
-                f"Adding a new record failed on the server only {added_rows} rows were added but should be 3"
+                f"Adding a new record failed on the server only {added_rows}"
+                "rows were added but should be 3"
             )
             raise HTTPException(status_code=503, detail="Pseudonym request failed")
         data = []
@@ -105,7 +93,7 @@ def request_pseudonym(record: PseudonymRequest) -> List:
     decoded_data = [
         (pickle.loads(encrypter.decrypt(word)), p) for word, p in matching_entries
     ]
-    return decoded_data  # TODO add pseudonym return
+    return decoded_data
 
 
 def add_record(record: PseudonymRequest, enc_key: bytes) -> bool:
@@ -162,7 +150,8 @@ def gen_index(q_key: Any, keywords: List[str]) -> Index:
     random_blind = group.random(ZR)
     index_request = hs(group, keywords) ** random_blind
     print(
-        f"Sending index request {index_request} serialized as {group.serialize(index_request, compression= False)}"
+        f"Sending index request {index_request} serialized as"
+        f"{group.serialize(index_request, compression= False)}"
     )
     index_answer = requests.get(
         f"{API_URL}/generateIndex",
@@ -173,7 +162,8 @@ def gen_index(q_key: Any, keywords: List[str]) -> Index:
         timeout=10,
     ).json()
     print(
-        f"Received answer as {index_answer}, desiralized to {group.deserialize(index_answer.encode(), compression= False)}"
+        f"Received answer as {index_answer}, desiralized to"
+        f"{group.deserialize(index_answer.encode(), compression= False)}"
     )
     # index_answer = group.pair_prod(index_request[1], comp_key)
     # print(group1.ismember((qk[0]/random_blind)))

@@ -1,15 +1,14 @@
 """This module represents a user-manager that is responsible for rolling out and revoking users
 that want to request pseudonyms"""
 import os
-import re
-from typing import Dict, List, Any, Tuple
-from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, extract_key  # type: ignore
+from typing import Any, Tuple
+import urllib.parse
+from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, extract_key
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import requests
 import redis
-import urllib.parse
-from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -28,7 +27,7 @@ CLIENT_URL = os.environ.get("CLIENT_BACKEND_URL")
 API_URL = os.environ.get("API_URL")
 USER_MANAGER_DB = os.environ.get("USER_MANAGER_DB")
 db = urllib.parse.urlsplit(USER_MANAGER_DB)
-r = redis.Redis(host=db.hostname, port=db.port, db=0, decode_responses=True)
+redis = redis.Redis(host=db.hostname, port=db.port, db=0, decode_responses=True)
 
 SetupParams = Tuple[bytes, Any, PairingGroup, bytes, Any]
 group = PairingGroup("SS512")
@@ -137,9 +136,8 @@ def enroll(user_id: int, group_element: Any) -> Tuple[bytes, bytes]:
         timeout=10,
     ).json()
     print(f"Adding user ended with status {successfull}")
-    # TODO add database
     if successfull:
-        rows = r.sadd(UA, user_id)
+        rows = redis.sadd(UA, user_id)
         print(rows)
         if rows == 0:
             raise HTTPException(status_code=400, detail="User already exists")
@@ -160,8 +158,8 @@ def revoke(user_id: int) -> bool:
         bool: true if the user was successfully revoked false otherwise
 
     """
-    r.srem(UA, user_id)
-    r.sadd(UR, user_id)
+    redis.srem(UA, user_id)
+    redis.sadd(UR, user_id)
 
     response = requests.post(
         f"{API_URL}/revoke", params={"user_id": user_id}, timeout=10
