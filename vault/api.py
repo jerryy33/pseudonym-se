@@ -9,7 +9,7 @@ from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 import redis
 import requests
 from dotenv import load_dotenv
-from ...hashes import h
+from hashes import h
 
 load_dotenv()
 Index = Tuple[str, str]
