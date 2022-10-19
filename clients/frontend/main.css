@@ -1,0 +1,70 @@
+.grid-container {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 10rem 30rem 1fr;
+}
+
+.grid-container-results {
+    margin-top: 5rem;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 15rem 1fr;
+}
+
+.grid-container-results span {
+    border-radius: .5rem;
+    border-color: gray;
+    border-style: solid;
+    height: 3rem;
+    font: 1rem sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.grid-container-results div {
+    height: 3rem;
+    font: italic 1rem sans-serif;
+    display: flex;
+    align-items: center;
+}
+
+#pseudonym-form label {
+    grid-column: 1 / 2;
+    font: italic 1rem sans-serif;
+    align-self: center;
+}
+
+#pseudonym-form input[type=text],
+#pseudonym-form button {
+    grid-column: 2 / 3;
+}
+
+#pseudonym-form input[type=checkbox] {
+    grid-column: 3 / 4;
+}
+
+#pseudonym-form input[type=text] {
+    border-radius: .5rem;
+    border-color: aliceblue;
+    border-style: inset;
+    height: 1.75rem;
+    font: 1rem sans-serif;
+    padding-left: .75rem;
+
+}
+
+button {
+    border-radius: .5rem;
+    border-color: black;
+    border-style: outset;
+    height: 2rem;
+    font: bold 1rem sans-serif;
+    margin-top: 1rem;
+    cursor: pointer;
+}
+
+body {
+    background-color: aliceblue;
+}

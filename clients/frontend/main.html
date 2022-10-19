@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Pseudonym request</title>
+    <link rel="stylesheet" href="main.css">
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="requests.js"></script>
+</head>
+
+<body>
+    <h1>Pseudonym Request</h1>
+    <h2>Generate new Pseudonym for data: </h2>
+    <div x-data="{firstName: '', surname: '', sid: '',
+    'firstNameIsKeyword': true, 'surnameIsKeyword': true, 'sidIsKeyword': true,
+     searchResults: '', decryptedData: {}}">
+        <form @submit.prevent="submitForm" class="grid-container" id="pseudonym-form">
+            <label>First name</label>
+            <input type="text" x-model="firstName">
+            <input type="checkbox" x-model="firstNameIsKeyword" checked>
+            <label>Surname</label>
+            <input type="text" x-model="surname">
+            <input type="checkbox" x-model="surnameIsKeyword" checked>
+            <label>SID</label>
+            <input type="text" x-model="sid">
+            <input type="checkbox" x-model="sidIsKeyword" checked>
+            <button>Search</button>
+        </form>
+        <br><br>
+        <div x-show="searchResults !==''" class="grid-container-results">
+            <div>Pseudonym was generated:</div>
+            <span x-text="searchResults"></span>
+            <div>For:</div>
+            <span x-text="JSON.stringify(decryptedData)"></span>
+        </div>
+    </div>
+</body>
+
+</html>
