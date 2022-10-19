@@ -1,0 +1,28 @@
+.grid-container {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: 30rem;
+}
+
+input[type="number"] {
+    border-radius: .5rem;
+    border-color: aliceblue;
+    border-style: inset;
+    height: 1.75rem;
+    font: 1rem sans-serif;
+    padding-left: .75rem;
+}
+
+button {
+    border-radius: .5rem;
+    border-color: black;
+    border-style: outset;
+    height: 2rem;
+    font: bold 1rem sans-serif;
+    margin-bottom: 1rem;
+    cursor: pointer;
+}
+
+body {
+    background-color: antiquewhite;
+}

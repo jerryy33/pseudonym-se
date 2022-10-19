@@ -1,22 +1,44 @@
 """This module represents a user-manager that is responsible for rolling out and revoking users
 that want to request pseudonyms"""
-from typing import List, Any, Tuple
+import os
+import re
+from typing import Dict, List, Any, Tuple
 from charm.toolbox.pairinggroup import PairingGroup, ZR, G1, G2, GT, extract_key  # type: ignore
-from fastapi import FastAPI
-
+from fastapi import FastAPI, HTTPException
+from dotenv import load_dotenv
 import requests
+import redis
+import urllib.parse
+from fastapi.middleware.cors import CORSMiddleware
+
+load_dotenv()
 
 app = FastAPI()
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+CLIENT_URL = os.environ.get("CLIENT_BACKEND_URL")
+API_URL = os.environ.get("API_URL")
+USER_MANAGER_DB = os.environ.get("USER_MANAGER_DB")
+db = urllib.parse.urlsplit(USER_MANAGER_DB)
+r = redis.Redis(host=db.hostname, port=db.port, db=0, decode_responses=True)
+
 SetupParams = Tuple[bytes, Any, PairingGroup, bytes, Any]
-API_URL = "http://localhost:8000"
 group = PairingGroup("SS512")
-UA: List[int] = []
-UR: List[int] = []
 managament_key: bytes
 group_element_for_key: Any
 group: PairingGroup
 enc_key: bytes
 seed: Any
+UA = "Authorized-Users-IDs"
+UR = "Revoked-User-IDs"
 
 
 @app.get("/publicParams")
@@ -25,16 +47,27 @@ def provide_public_params() -> str:
 
 
 @app.post("/enroll/{user_id}")
-def enroll_user(user_id: int) -> Tuple[bytes, bytes, bytes]:
+def enroll_user(user_id: int) -> bool:
     user_detail = enroll(user_id, group_element_for_key)
     print(user_detail[0])
-    return {
-        "groupElement": group.serialize(user_detail[0], compression=False),
-        "seed": group.serialize(user_detail[1], compression=False),
-        # TODO for some reason this key cannot be decoded normally, maybe send the group element
-        # and call "extract_key" on the clients
-        "encKey": f"{enc_key}",
-    }
+
+    response = requests.put(
+        f"{CLIENT_URL}/receiveSecurityDetails",
+        json={
+            "query_key": group.serialize(user_detail[0], compression=False).decode(),
+            "seed": group.serialize(user_detail[1], compression=False).decode(),
+            # TODO for some reason this key cannot be decoded normally, maybe send the group element
+            # and call "extract_key" on the clients
+            "encryption_key": f"{enc_key}",
+            "user_id": user_id,
+        },
+        timeout=10,
+    )
+    if response.ok:
+        res = response.json()
+        print(res)
+        return res == 3 or res == 0
+    raise HTTPException(status_code=response.status_code, detail=response.json())
 
 
 @app.post("/revoke")
@@ -98,22 +131,20 @@ def enroll(user_id: int, group_element: Any) -> Tuple[bytes, bytes]:
     # print(com_k)
     send_key: bytes = group.serialize(com_k, compression=False)
     print(f"Sending comp key{com_k} to serv serialized as {send_key}")
-    rows_added = requests.post(
+    successfull = requests.post(
         f"{API_URL}/addUser",
         params={"user_id": user_id, "comp_key": send_key},
         timeout=10,
     ).json()
-    print(f"Adding user added {rows_added} to the database")
+    print(f"Adding user ended with status {successfull}")
     # TODO add database
-    if rows_added == 1:
-        UA.append(user_id)
-    elif rows_added == 0:
-        # remove this line if databse exists
-        UA.append(user_id)
-        user_exists = user_id in UA
-        print(f"User already exists: {user_exists}")
+    if successfull:
+        rows = r.sadd(UA, user_id)
+        print(rows)
+        if rows == 0:
+            raise HTTPException(status_code=400, detail="User already exists")
     else:
-        raise RuntimeError("Adding user failed")
+        raise HTTPException(status_code=500, detail="Adding user failed")
     return xu, seed
 
 
@@ -129,12 +160,15 @@ def revoke(user_id: int) -> bool:
         bool: true if the user was successfully revoked false otherwise
 
     """
-    UA.remove(user_id)
-    UR.append(user_id)
+    r.srem(UA, user_id)
+    r.sadd(UR, user_id)
 
-    return requests.post(
+    response = requests.post(
         f"{API_URL}/revoke", params={"user_id": user_id}, timeout=10
-    ).json()
+    )
+    if response.ok:
+        return response.json()
+    raise HTTPException(status_code=response.status_code, detail=response.json())
 
 
 managament_key, group_element_for_key, group, enc_key, seed = setup()

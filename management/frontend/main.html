@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>User-Management</title>
+    <link rel="stylesheet" href="main.css">
+    <script src="requests.js"></script>
+</head>
+
+<body>
+    <h1>User-Management</h1>
+    <div class="grid-container">
+        <input type="number" id="revoke-user" min="0" placeholder="User ID">
+        <button onclick="revokeUser(document.getElementById('revoke-user').value)">Revoke User</button>
+        <input type="number" id="enroll-user" min="0" placeholder="User ID">
+        <button onclick="enrollUser(document.getElementById('enroll-user').value)">Enroll User</button>
+    </div>
+    <div id="results"></div>
+
+</body>
+
+</html>

@@ -1,0 +1,24 @@
+const BACKEND_HOST = "http://localhost:8080"
+async function enrollUser(userID) {
+    console.log(userID)
+    const response = await fetch(`${BACKEND_HOST}/enroll/${userID}`, { method: "POST" })
+    if (response.ok) {
+        const enrollResponse = await response.json()
+        document.getElementById("results").innerText = "Enrollment was successfull: " + enrollResponse;
+    }
+    else {
+        const errorDetail = await response.text()
+        document.getElementById("results").innerText = response.statusText + errorDetail
+    }
+}
+async function revokeUser(userID) {
+    const response = await fetch(`${BACKEND_HOST}/revoke?user_id=${userID}`, { method: "POST" })
+    if (response.ok) {
+        const revokeResponse = await response.json()
+        document.getElementById("results").innerText = "Revokation was successfull: " + revokeResponse;
+    }
+    else {
+        const errorDetail = await response.text()
+        document.getElementById("results").innerText = response.statusText + errorDetail
+    }
+}
