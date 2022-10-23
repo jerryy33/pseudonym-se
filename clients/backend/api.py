@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import PseudonymRequest, SecurityDetails
-from constants import GROUP, API_URL, MY_ID
+from constants import GROUP, API_URL, MY_ID  # pylint: disable=no-name-in-module
 from se import write, construct_query
 from db import DB
 
