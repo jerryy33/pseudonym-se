@@ -1,3 +1,4 @@
+"""Global constants"""
 import os
 from dotenv import load_dotenv
 from charm.toolbox.pairinggroup import PairingGroup
