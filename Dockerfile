@@ -1,5 +1,4 @@
-# charm-crypto image
-FROM ubuntu:18.04
+FROM python:3.7.15-bullseye
 
 RUN apt update \
     && apt install --yes build-essential flex bison wget subversion m4 python3 python3-dev python3-setuptools libgmp-dev libssl-dev gcc git
@@ -22,3 +21,14 @@ RUN git clone https://github.com/JHUISI/charm.git \
     && make \
     && make install \
     && ldconfig
+
+RUN pip install "poetry==1.2"
+WORKDIR /code
+COPY poetry.lock pyproject.toml /code/
+
+# Project initialization:
+RUN poetry config virtualenvs.create false \
+    && poetry install --without charm --no-interaction --no-ansi
+
+# Creating folders, and files for a project:
+COPY . /code    

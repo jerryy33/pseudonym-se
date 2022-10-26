@@ -1,0 +1,25 @@
+version: '3'
+services:
+  api-db:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    volumes:
+      - ./config/redis.conf:/redis.conf
+    command: [ "redis-server", "/redis.conf" ]
+  client-db:
+    image: redis:latest
+    ports:
+      - 6378:6379
+    command: [ "redis-server" ]
+  user-manager-db:
+    image: redis:latest
+    ports:
+      - 6377:6379
+    command: [ "redis-server" ]
+  user-manager:
+    build: /
+  client:
+    build: /
+  vault:
+    build: /
