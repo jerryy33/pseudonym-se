@@ -22,3 +22,15 @@ async function revokeUser(userID) {
         document.getElementById("results").innerText = response.statusText + errorDetail
     }
 }
+
+async function setup() {
+    const response = await fetch(`${BACKEND_HOST}/setup`, { method: "POST" })
+    if (response.ok) {
+        const setupResponse = await response.json()
+        document.getElementById("setup-results").innerText = "Setup was successfull: " + setupResponse
+    }
+    else {
+        const errorDetail = await response.text()
+        document.getElementById("setup-results").innerText = response.statusText + errorDetail
+    }
+}

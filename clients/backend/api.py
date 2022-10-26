@@ -5,6 +5,7 @@ import requests
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from util import generate_wildcard_list
 
 from models import PseudonymRequest, SecurityDetails
 from constants import GROUP, API_URL, MY_ID  # pylint: disable=no-name-in-module
@@ -38,7 +39,7 @@ def receive_security_details(details: SecurityDetails):
             "encryptionKey": details.encryption_key,
         },
     )
-    print(added_fields)
+    # print(added_fields)
     return added_fields
 
 
@@ -54,22 +55,15 @@ def request_pseudonym(record: PseudonymRequest) -> List:
     Returns:
         List: a list containing pseudonyms and the matching record
     """
-    print(record)
+    # print(record)
     key = DB.hget(f"users:{MY_ID}", "encryptionKey").encode()
     keywords = [record.data[key] for key in record.keywords if key in record.data]
-    print(keywords)
-    matching_entries = search_for_record(keywords)
+    # print(keywords)
+    matching_entries = search_for_record(keywords, record.is_fuzzy)
     print(matching_entries)
     encrypter = SymmetricCryptoAbstraction(key)
     if not matching_entries:
-        pseudonym, added_record, added_rows = add_record(record, key)
-        print(added_rows)
-        if added_rows != 3:
-            print(
-                f"Adding a new record failed on the server only {added_rows}"
-                "rows were added but should be 3"
-            )
-            raise HTTPException(status_code=503, detail="Pseudonym request failed")
+        pseudonym, added_record = add_record(record, key, record.is_fuzzy)
         data = []
         data.append((pickle.loads(encrypter.decrypt(added_record)), pseudonym))
         return data
@@ -80,7 +74,9 @@ def request_pseudonym(record: PseudonymRequest) -> List:
     return decoded_data
 
 
-def add_record(record: PseudonymRequest, enc_key: bytes) -> bool:
+def add_record(
+    record: PseudonymRequest, enc_key: bytes, enable_fuzzy_search: bool
+) -> bool:
     """Add an encrypted record to the vault
 
     Args:
@@ -89,17 +85,19 @@ def add_record(record: PseudonymRequest, enc_key: bytes) -> bool:
     Returns:
         bool: true if adding the record was successfull
     """
-    document = write(record, enc_key)
-    index = document[1]
-    # print(document)
-    return requests.post(
+    document = write(record, enc_key, enable_fuzzy_search)
+    response = requests.post(
         f"{API_URL}/addRecord",
-        params={"record": document[0], "index1": index[0], "index2": index[1]},
+        json={"record": document[0], "indices": document[1]},
         timeout=10,
-    ).json()
+    )
+
+    if response.ok:
+        return response.json()
+    raise HTTPException(status_code=503, detail=response.json())
 
 
-def search_for_record(keywords: List[str]) -> List:
+def search_for_record(keywords: List[str], fuzzy_search: bool) -> List:
     """Searches for records in the vault and returns them if they match the search record
 
     Args:
@@ -109,12 +107,28 @@ def search_for_record(keywords: List[str]) -> List:
         List: a list of matching records
     """
     query_key = DB.hget(f"users:{MY_ID}", "queryKey")
-    query = construct_query(GROUP.deserialize(query_key.encode()), keywords)
-    return requests.get(
+    if fuzzy_search:
+        wildcard_list = generate_wildcard_list(keywords)
+        wildcard_list = [item for sublist in wildcard_list for item in sublist]
+
+    user_id, queries = construct_query(
+        GROUP.deserialize(query_key.encode()),
+        wildcard_list if fuzzy_search else keywords,
+    )
+    serialized_queries = [
+        GROUP.serialize(query, compression=False).decode() for query in queries
+    ]
+
+    response = requests.post(
         f"{API_URL}/search",
-        params={
-            "user_id": query[0],
-            "query": GROUP.serialize(query[1], compression=False),
+        json={
+            "user_id": user_id,
+            "queries": serialized_queries,
+            "is_fuzzy": fuzzy_search,
+            "expected_amount_of_keywords": len(keywords),
         },
-        timeout=10,
-    ).json()
+        timeout=20,
+    )
+    if response.ok:
+        return response.json()
+    raise HTTPException(status_code=503, detail=response.json())

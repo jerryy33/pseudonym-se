@@ -32,9 +32,11 @@ def start_setup():
     redis.mset(
         mapping={
             "management_key": management_key,
-            "group_element_for_key": group_element_for_key,
-            "enc_key": enc_key,
-            "seed": seed,
+            "group_element_for_key": GROUP.serialize(
+                group_element_for_key, compression=False
+            ),
+            "enc_key": f"{enc_key}",
+            "seed": GROUP.serialize(seed, compression=False),
         }
     )
     return "OK"
@@ -42,16 +44,18 @@ def start_setup():
 
 @app.post("/enroll/{user_id}")
 def enroll_user(user_id: int) -> bool:
-    group_element_for_key = redis.get("group_element_for_key")
+    group_element_for_key = GROUP.deserialize(
+        redis.get("group_element_for_key").encode(), compression=False
+    )
     enc_key = redis.get("enc_key")
     seed = redis.get("seed")
+    print(group_element_for_key)
     user_detail = enroll(user_id, group_element_for_key)
-    print(user_detail[0])
 
     response = requests.put(
         f"{CLIENT_URL}/receiveSecurityDetails",
         json={
-            "query_key": GROUP.serialize(user_detail[0], compression=False).decode(),
+            "query_key": GROUP.serialize(user_detail, compression=False).decode(),
             "seed": seed,
             # TODO for some reason this key cannot be decoded normally, maybe send the GROUP element
             # and call "extract_key" on the clients

@@ -6,8 +6,9 @@ from pydantic import BaseModel
 class PseudonymRequest(BaseModel):
     """Model for a pseudonymm request, contains the actual data and a list of keywords"""
 
-    data: Dict[Any, str]
+    data: Dict[str, str]
     keywords: List[str]
+    is_fuzzy: bool
 
 
 class SecurityDetails(BaseModel):

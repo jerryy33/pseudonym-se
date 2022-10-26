@@ -41,8 +41,29 @@
     grid-column: 2 / 3;
 }
 
-#pseudonym-form input[type=checkbox] {
+#pseudonym-form input[type=checkbox]:not(#fuzzy) {
     grid-column: 3 / 4;
+    transform: scale(.6);
+}
+
+#pseudonym-form .search-label,
+#pseudonym-form #fuzzy {
+    grid-column: 3/4;
+    grid-row: 4/5;
+    font: italic .8rem sans-serif;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+#pseudonym-form #fuzzy {
+    transform: scale(1.3);
+    align-self: center;
+    justify-self: center;
+}
+
+#pseudonym-form .search-label {
+    align-self: center;
+    justify-self: flex-start;
 }
 
 #pseudonym-form input[type=text] {

@@ -4,7 +4,8 @@ functionality of the vault, the user-managament center and a single client.
 Notes:
  - .type for a paring element returns the group integer -> 0:ZR, 1:G1, 2:G2, 3:GT
 """
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
+import time
 import pickle
 import secrets
 import string
@@ -21,6 +22,40 @@ UM_RANDOM: Any
 UA: List[int] = []
 UR: List[int] = []
 API_KEY_USER_ID_LIST: List[Tuple[int, str]] = []
+
+
+def hs(s: Any, w: Any):
+    # TODO find out how to integrate s
+    return GROUP.hash(w, type=G1)
+
+
+def h(element_to_hash: Any):
+    return sha256(GROUP.serialize(element_to_hash, compression=False))
+
+
+def generate_wildcard_list(words: Union[List, str]) -> List[List[str]]:
+    # produces list of length n*2 +1 where n = len(word)
+    if isinstance(words, str):
+        words = [words]
+        wildcard_list = [words]
+    else:
+        wildcard_list = []
+    # print(words, wildcard_list)
+    for word in words:
+        # print(word)
+        keyword_wildcard_list = [word]
+        for i in range(0, len(word) + 1):
+            wildcard1 = word[:i] + "*" + word[i:]
+            # print("Wildcard1 is: ", wildcard1)
+            keyword_wildcard_list.append(wildcard1)
+            if i == len(word):
+                break
+            wildcard2 = word[:i] + "*" + word[i + 1 :]
+            # print("Wildcard2 is: ", wildcard2)
+
+            keyword_wildcard_list.append(wildcard2)
+        wildcard_list.append(keyword_wildcard_list)
+    return wildcard_list
 
 
 def setup():
@@ -65,14 +100,14 @@ def revoke(u: int):
             API_KEY_USER_ID_LIST.remove(entry)
 
 
-def gen_index(qk: Tuple[Any, Any], w: List[str], comK: Any):  # , g, random):
+def gen_index(qk: Any, comK: Any, word: str):
     random_blind = GROUP.random(ZR)
-    index_request = (1, hs(None, w) ** random_blind)
+    index_request = (1, hs(None, word) ** random_blind)
 
     index_answer = GROUP.pair_prod(index_request[1], comK)
     # print(group1.ismember((qk[0]/random_blind)))
     k = h(index_answer ** (qk[0] / random_blind)).digest()
-    print(k)
+    # print(k)
     # print(index_answer ** (qk[0]/random_blind),
     # group1.pair_prod(hs(None,w), g)** random,
     # group1.pair_prod(hs(None,w)** qk[0], g ** (random/ qk[0])),
@@ -86,145 +121,108 @@ def gen_index(qk: Tuple[Any, Any], w: List[str], comK: Any):  # , g, random):
         secrets.choice(string.ascii_uppercase + string.digits) for _ in range(16)
     )
     e_index = kv.encrypt(res)
-    i_w = (res, e_index)
-
-    return i_w
+    return (res, e_index)
 
 
-def write(e: SymmetricCryptoAbstraction, d: Dict):
-    keywords = [d["data"][key] for key in d["keywords"] if key in d["data"]]
-    print(keywords)
-    I_w = gen_index(query_key, keywords, complementary_key)
-    encoded_dict = pickle.dumps(d["data"])
-    ct = e.encrypt(encoded_dict)
-    return (ct, I_w)
+def gen_indizes(qk: Any, keywords: List[str], comK: Any) -> List[Tuple[str, str]]:
+    indices = []
+    for word in keywords:
+        i_w = gen_index(qk, comK, word)
+        indices.append(i_w)
+    return indices
 
 
-def construct_query(qk: Tuple[Any, Any], w: List):
-    query = hs(None, w) ** qk[0]
-    return (1, query)
-
-
-def search(query: Tuple[int, Any]):
-    # print(comK1, comKU)
-    if complementary_key in API_KEY_USER_ID_LIST[0]:
-
-        k1 = h(GROUP.pair_prod(query[1], complementary_key)).digest()
-        print(k1)
-        # print(group1.pair_prod(query[1], comK1))
-        aes = SymmetricCryptoAbstraction(k1)
-        a = []
-        for index in DB:
-            # print(index[1][1])
-            e_index: str = index[1][1]
-            # print(aes.decrypt(e_index), e_index)
-            inn: bytes = aes.decrypt(e_index)
-            # print(inn, inn.decode())
-            if index[1][0] == inn.decode(errors="replace"):
-                a.append(index[0])
-
-        return a
-    return None
-
-
-def hs(s: Any, w: Any):
-    # TODO find out how to integrate s
-    return GROUP.hash(w, type=G1)
-
-
-def h(element_to_hash: Any):
-    return sha256(GROUP.serialize(element_to_hash, compression=False))
-
-
-# TODO improve performance with breaks and return early (check if we can return after we have one result)
-def fuzzy_search(query: Tuple[int, Any]):
-    # print(comK1, comKU)
-    if complementary_key in API_KEY_USER_ID_LIST[0]:
-        queries_list = query[1]
-        a = []
-        for q in queries_list:
-            k1 = h(GROUP.pair_prod(q, complementary_key)).digest()
-            # print(k1)
-            # print(group1.pair_prod(query[1], comK1))
-            aes = SymmetricCryptoAbstraction(k1)
-            for entry in DB:
-                indices_list = entry[1]
-                for index in indices_list:
-                    e_index: str = index[1]
-                    # print(index[0], index[1])
-                    inn: bytes = aes.decrypt(e_index)
-                    # print(index[0])
-                    if index[0] == inn.decode(errors="replace"):
-                        a.append(entry[0])
-
-        return a
-    return None
-
-
-def gen_indizes_for_fuzzy(
-    qk: Tuple[Any, Any], w: List[str], comK: Any
-):  # , g, random):
-    wildcard_list = generate_wildcard_list(w[0])
-    list_of_indices = []
-    for wildcard in wildcard_list:
-        random_blind = GROUP.random(ZR)
-        index_request = (1, hs(None, wildcard) ** random_blind)
-
-        index_answer = GROUP.pair_prod(index_request[1], comK)
-        # print(group1.ismember((qk[0]/random_blind)))
-        k = h(index_answer ** (qk[0] / random_blind)).digest()
-        # print(k)
-        # print(index_answer ** (qk[0]/random_blind),
-        # group1.pair_prod(hs(None,w), g)** random,
-        # group1.pair_prod(hs(None,w)** qk[0], g ** (random/ qk[0])),
-        # sep='\n \n', end='\n \n')
-        # print((qk[0]/random_blind).type, comK.type,random_blind.type,index_request[1].type,index_answer.type, k)
-        # print(index_answer ** (qk[0]/ random_blind))
-        kv = SymmetricCryptoAbstraction(k)
-
-        res = "".join(
-            secrets.choice(string.ascii_uppercase + string.digits) for _ in range(16)
-        )
-        e_index = kv.encrypt(res)
-        i_w = (res, e_index)
-        list_of_indices.append(i_w)
-
-    return list_of_indices
-
-
-def write_for_fuzzy(e: SymmetricCryptoAbstraction, d: Dict):
-    keywords = [d["data"][key] for key in d["keywords"] if key in d["data"]]
+def write(e: SymmetricCryptoAbstraction, d: Dict, fuzzy: bool):
+    keywords = list(d["data"].values())
     # print(keywords)
-    I_w = gen_indizes_for_fuzzy(query_key, keywords, complementary_key)
+    if fuzzy:
+        wildcard_lists = generate_wildcard_list(keywords)
+        i_w = []
+        for wildcard_keyword_list in wildcard_lists:
+            i_w.append(gen_indizes(query_key, wildcard_keyword_list, complementary_key))
+    else:
+        i_w = gen_indizes(query_key, keywords, complementary_key)
     encoded_dict = pickle.dumps(d["data"])
     ct = e.encrypt(encoded_dict)
-    return (ct, I_w)
+    return (ct, i_w)
 
 
-def construct_queries_fuzzy(qk: Tuple[Any, Any], w: List):
-    wildcard_list = generate_wildcard_list(w[0])
+def construct_query(qk: Tuple[Any, Any], w: List) -> Tuple[int, List[Any]]:
     queries = []
-    for wildcard in wildcard_list:
-        query = hs(None, wildcard) ** qk[0]
+    for word in w:
+        query = hs(None, word) ** qk[0]
         queries.append(query)
     return (1, queries)
 
 
-def generate_wildcard_list(word: str) -> List:
-    # produces list of length n*2 +1 where n = len(word)
-    wildcard_list = [word]
-    for i in range(0, len(word) + 1):
-        wildcard1 = word[:i] + "*" + word[i:]
-        print("Wildcard1 is: ", wildcard1)
-        wildcard_list.append(wildcard1)
-        if i == len(word):
-            break
-        wildcard2 = word[:i] + "*" + word[i + 1 :]
-        print("Wildcard2 is: ", wildcard2)
+def search(queries: Tuple[int, List[Any]]):
+    # print(comK1, comKU)
+    results = []
+    if complementary_key in API_KEY_USER_ID_LIST[0]:
+        for entry in DB:
+            # print(entry)
+            query_hits = 0
+            for query in queries[1]:
+                k1 = h(GROUP.pair_prod(query, complementary_key)).digest()
+                print(k1)
+                # print(group1.pair_prod(query[1], comK1))
+                aes = SymmetricCryptoAbstraction(k1)
+                for index in entry[1]:
+                    e_index: str = index[1]
+                    # print(aes.decrypt(e_index), e_index)
+                    inn: bytes = aes.decrypt(e_index)
+                    # print(inn, inn.decode())
+                    if index[0] == inn.decode(errors="replace"):
+                        query_hits += 1
+            print(len(queries[1]) == query_hits)
+            if len(queries[1]) == query_hits and query_hits > 0:
+                results.append(entry[0])
 
-        wildcard_list.append(wildcard2)
+        return results
+    return None
 
-    return wildcard_list
+
+# TODO improve performance with breaks and return early (check if we can return after we have one result)
+def fuzzy_search(
+    user_id: int, queries: List[str], expected_amount_of_keywords: int = 1
+):
+    # print(comK1, comKU)
+    if complementary_key in API_KEY_USER_ID_LIST[0]:
+        keys = []
+        for q in queries:
+            keys.append(h(GROUP.pair_prod(q, complementary_key)).digest())
+        a = []
+        for entry in DB:
+            indices_lists = entry[1]
+            # print(entry)
+            query_hits = 0
+            for j, keyword_index_list in enumerate(indices_lists):
+                for key in keys:
+                    aes = SymmetricCryptoAbstraction(key)
+                    for i, index in enumerate(keyword_index_list):
+                        # print(i, j)
+                        e_index: str = index[1]
+                        # print(index[0], index[1])
+                        inn: bytes = aes.decrypt(e_index)
+                        # print(index[0])
+                        if index[0] == inn.decode(errors="replace"):
+                            query_hits += 1
+                            # print(f"hit {query_hits}")
+                            break
+                    else:
+                        continue
+                    break
+            print(
+                query_hits,
+                expected_amount_of_keywords,
+                len(queries),
+                len(keyword_index_list),
+                len(indices_lists),
+            )
+            if query_hits > 0 and query_hits == expected_amount_of_keywords:
+                a.append(entry[0])
+        return a
+    return None
 
 
 if __name__ == "__main__":
@@ -237,23 +235,31 @@ if __name__ == "__main__":
         },
     }
     # Exact Search Example
-    # UM_RANDOM, ENCRYPTER, SEED = setup()
-    # complementary_key, query_key = enroll(1, UM_RANDOM)
-    # r = write(ENCRYPTER, test_dict)
-    # DB.append(r)
-    # # order is important needs to be same as keywords
-    # Q = construct_query(query_key, ["word123456789qwertz", "Herbst", "1536363"])
-    # search_results = search(Q)
-    # print(pickle.loads(ENCRYPTER.decrypt(search_results[0])))
-    # revoke(1)
-
-    # Fuzzy Search Example
     UM_RANDOM, ENCRYPTER, SEED = setup()
     complementary_key, query_key = enroll(1, UM_RANDOM)
-    r = write_for_fuzzy(ENCRYPTER, test_dict)
+    r = write(ENCRYPTER, test_dict, False)
     DB.append(r)
     # order is important needs to be same as keywords
-    Q = construct_queries_fuzzy(query_key, ["word123456789qwertz"])
-    results = fuzzy_search(Q)
-    for r in results:
-        print(pickle.loads(ENCRYPTER.decrypt(r)))
+    Q = construct_query(query_key, ["word123456789qwertz", "Herbst", "1536363"])
+    search_results = search(Q)
+    for result in search_results:
+        print(pickle.loads(ENCRYPTER.decrypt(result)))
+    revoke(1)
+
+    # Fuzzy Search Example
+    # UM_RANDOM, ENCRYPTER, SEED = setup()
+    # complementary_key, query_key = enroll(1, UM_RANDOM)
+    # r = write(ENCRYPTER, test_dict, True)
+    # DB.append(r)
+    # # order is important needs to be same as keywords
+    # search_words = ["word123456789qwertz", "Herbst"]
+    # wildcard_list = generate_wildcard_list(search_words)
+    # wildcard_list = [item for sublist in wildcard_list for item in sublist]
+    # user_id, queries = construct_query(query_key, wildcard_list)
+    # start = time.time()
+    # results = fuzzy_search(user_id, queries, len(search_words))
+    # end = time.time()
+    # print(end - start)
+    # # print(results)
+    # for r in results:
+    #     print(pickle.loads(ENCRYPTER.decrypt(r)))

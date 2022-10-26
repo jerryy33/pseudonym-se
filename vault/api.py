@@ -3,8 +3,9 @@ from typing import List, Union
 from fastapi import FastAPI, HTTPException
 from constants import PSEUDONYM_ENTRIES, GROUP  # pylint: disable=no-name-in-module
 from db import database  # pylint: disable=no-name-in-module
-from se import revoke_access, search  # pylint: disable=no-name-in-module
+from se import revoke_access, search, fuzzy_search  # pylint: disable=no-name-in-module
 from pseudonyms import generate_pseudonym
+from models import AddRequest, SearchRequest  # pylint: disable=no-name-in-module
 
 app = FastAPI()
 
@@ -35,26 +36,39 @@ def gen_index(user_id: int, hashed_keyword: bytes) -> bytes:
 
 
 @app.post("/addRecord")
-def add_record(record: str, index1: str, index2: str) -> int:
-    pseudonym = generate_pseudonym(record)
-    index = index1 + "," + index2
-
+def add_record(request: AddRequest) -> int:
+    pseudonym = generate_pseudonym(request.record)
     database.incr("hash_name_index", 1)
     hash_index = database.get("hash_name_index")
     print(hash_index, f"{PSEUDONYM_ENTRIES}:{hash_index}")
     # TODO use pipeline to make this secure for multiple users
-    index_fields = database.hset(f"{PSEUDONYM_ENTRIES}:{hash_index}", "index", index)
-    pseudonym_fields = database.hset(
-        f"{PSEUDONYM_ENTRIES}:{hash_index}", "pseudonym", pseudonym
-    )
-    record_fields = database.hset(f"{PSEUDONYM_ENTRIES}:{hash_index}", "record", record)
-    return (pseudonym, record, index_fields + pseudonym_fields + record_fields)
+    for keyword_number, index_list in enumerate(request.indices):
+        for index_number, index in enumerate(index_list):
+            combined_index = ",".join(index)
+            # print(combined_index, index)
+            database.hset(
+                f"{PSEUDONYM_ENTRIES}:{hash_index}",
+                f"index:{keyword_number}: {index_number}",
+                combined_index,
+            )
+
+    database.hset(f"{PSEUDONYM_ENTRIES}:{hash_index}", "pseudonym", pseudonym)
+    database.hset(f"{PSEUDONYM_ENTRIES}:{hash_index}", "record", request.record)
+    return (pseudonym, request.record)
 
 
-@app.get("/search")
-def search_records(user_id: int, query: bytes) -> List:
+@app.post("/search")
+def search_records(request: SearchRequest) -> List:
     # print(f"Received query_key as {query}, deserilized to {GROUP.deserialize(query)}")
-    return search((user_id, GROUP.deserialize(query, compression=False)))
+    search_queries = [
+        GROUP.deserialize(query.encode(), compression=False)
+        for query in request.queries
+    ]
+    if request.is_fuzzy:
+        return fuzzy_search(
+            request.user_id, search_queries, request.expected_amount_of_keywords
+        )
+    return search(request.user_id, search_queries)
 
 
 @app.post("/revoke")

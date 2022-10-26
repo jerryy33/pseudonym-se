@@ -13,7 +13,7 @@
     <h2>Generate new Pseudonym for data: </h2>
     <div x-data="{firstName: '', surname: '', sid: '',
     'firstNameIsKeyword': true, 'surnameIsKeyword': true, 'sidIsKeyword': true,
-     searchResults: '', decryptedData: {}}">
+     searchResults: '',isFuzzySearch: false, decryptedData: {}}">
         <form @submit.prevent="submitForm" class="grid-container" id="pseudonym-form">
             <label>First name</label>
             <input type="text" x-model="firstName">
@@ -25,6 +25,8 @@
             <input type="text" x-model="sid">
             <input type="checkbox" x-model="sidIsKeyword" checked>
             <button>Search</button>
+            <label for="fuzzy" class="search-label">Activate Fuzzy Search</label>
+            <input type="checkbox" x-model="isFuzzySearch" name="fuzzy" id="fuzzy">
         </form>
         <br><br>
         <div x-show="searchResults !==''" class="grid-container-results">
