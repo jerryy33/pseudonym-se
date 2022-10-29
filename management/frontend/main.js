@@ -23,7 +23,7 @@ async function revokeUser(userID) {
     }
 }
 
-async function setup() {
+export async function setup() {
     const response = await fetch(`${BACKEND_HOST}/setup`, { method: "POST" })
     if (response.ok) {
         const setupResponse = await response.json()

@@ -1,4 +1,6 @@
 .vscode
+.VSCodeCounter
 __pycache__/
 *.py[cod]
 .pylintrc
+node_modules
