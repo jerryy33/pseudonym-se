@@ -107,23 +107,31 @@ def search_for_record(keywords: List[str], fuzzy_search: bool) -> List:
         List: a list of matching records
     """
     query_key = DB.hget(f"users:{MY_ID}", "queryKey")
+    queries_list = []
     if fuzzy_search:
-        wildcard_list = generate_wildcard_list(keywords)
-        wildcard_list = [item for sublist in wildcard_list for item in sublist]
-
-    user_id, queries = construct_query(
-        GROUP.deserialize(query_key.encode()),
-        wildcard_list if fuzzy_search else keywords,
-    )
-    serialized_queries = [
-        GROUP.serialize(query, compression=False).decode() for query in queries
-    ]
+        wildcard_lists = generate_wildcard_list(keywords)
+        for wildcard_list in wildcard_lists:
+            user_id, queries = construct_query(
+                GROUP.deserialize(query_key.encode()), wildcard_list
+            )
+            serialized_queries = [
+                GROUP.serialize(query, compression=False).decode() for query in queries
+            ]
+            queries_list.append(serialized_queries)
+    else:
+        user_id, queries = construct_query(
+            GROUP.deserialize(query_key.encode(), compression=False), keywords
+        )
+        serialized_queries = [
+            GROUP.serialize(query, compression=False).decode() for query in queries
+        ]
+        queries_list.append(serialized_queries)
 
     response = requests.post(
         f"{API_URL}/search",
         json={
             "user_id": user_id,
-            "queries": serialized_queries,
+            "queries": queries_list,
             "is_fuzzy": fuzzy_search,
             "expected_amount_of_keywords": len(keywords),
         },

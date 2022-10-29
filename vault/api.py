@@ -61,14 +61,15 @@ def add_record(request: AddRequest) -> int:
 def search_records(request: SearchRequest) -> List:
     # print(f"Received query_key as {query}, deserilized to {GROUP.deserialize(query)}")
     search_queries = [
-        GROUP.deserialize(query.encode(), compression=False)
-        for query in request.queries
+        [GROUP.deserialize(query.encode(), compression=False) for query in queries]
+        for queries in request.queries
     ]
+    # print(search_queries)
     if request.is_fuzzy:
         return fuzzy_search(
             request.user_id, search_queries, request.expected_amount_of_keywords
         )
-    return search(request.user_id, search_queries)
+    return search(request.user_id, search_queries[0])
 
 
 @app.post("/revoke")

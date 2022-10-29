@@ -1,5 +1,5 @@
 """Searchable encryption algorithms"""
-from typing import Tuple, Any, List
+from typing import Any, List
 from fastapi import HTTPException
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 from constants import GROUP
@@ -85,46 +85,55 @@ def search(user_id: int, queries: List[str]) -> List:
 
 
 def fuzzy_search(
-    user_id: int, queries: List[Any], expected_amount_of_keywords: int = 1
+    user_id: int, queries: List[List[Any]], expected_amount_of_keywords: int = 1
 ) -> List:
     com_k = database.get(user_id)
     # print(f"Got com key from database as {com_k}")
     if com_k is None:
         raise HTTPException(status_code=403, detail="User is not authorized to search")
     com_k = GROUP.deserialize(com_k.encode(), compression=False)
-
-    bilinear_keys: List[bytes] = []
-    for query in queries:
-        bilinear_keys.append(h(GROUP, GROUP.pair_prod(query, com_k)))
+    search_tokens = []
+    for q in queries:
+        tmp = []
+        for token in q:
+            tmp.append(h(GROUP, GROUP.pair_prod(token, com_k)))
+        search_tokens.append(tmp)
 
     results = []
     keys = database.scan_iter(_type="HASH")
     key: str
+    index_containers = len(search_tokens)
     for key in keys:
         query_hits = 0
         # print(f"Key is:{key}")
-        for index_number in range(0, expected_amount_of_keywords):
-            for index_key in bilinear_keys:
-                aes = SymmetricCryptoAbstraction(index_key)
-
+        print(index_containers)
+        # TODO find a way to make 3 variable
+        for index_number in range(0, 3):
+            for search_token_keyword_list in search_tokens[:]:
                 indices = database.hscan_iter(key, f"index:{index_number}:*")
                 index: str
                 for _, index in indices:
-                    # print(f"Value is:{index} and key is {_}")
-                    e_index = index.split(sep=",", maxsplit=1)
-                    # print("list of indexes", e_index)
-                    if len(e_index) != 2:
-                        print("The key was not a expected index", e_index)
-                        print("length was", len(e_index))
+                    for search_token in search_token_keyword_list:
+                        aes = SymmetricCryptoAbstraction(search_token)
+                        # print(f"Value is:{index} and key is {_}")
+                        e_index = index.split(sep=",", maxsplit=1)
+                        # print("list of indexes", e_index)
+                        if len(e_index) != 2:
+                            print("The key was not a expected index", e_index)
+                            print("length was", len(e_index))
+                            continue
+                        inn: bytes = aes.decrypt(e_index[1])
+                        if e_index[0] == inn.decode(errors="replace"):
+                            query_hits += 1
+                            search_tokens.remove(search_token_keyword_list)
+                            break
+                    else:
                         continue
-                    inn: bytes = aes.decrypt(e_index[1])
-                    if e_index[0] == inn.decode(errors="replace"):
-                        query_hits += 1
-                        break
+                    break
                 else:
                     continue
                 break
-        print(query_hits)
+        # print(query_hits)
         if query_hits == expected_amount_of_keywords and query_hits > 0:
             record = database.hget(key, "record")
             pseudonym = database.hget(key, "pseudonym")
