@@ -2,24 +2,52 @@ version: '3'
 services:
   api-db:
     image: redis:latest
-    ports:
-      - 6379:6379
     volumes:
       - ./config/redis.conf:/redis.conf
     command: [ "redis-server", "/redis.conf" ]
   client-db:
     image: redis:latest
-    ports:
-      - 6378:6379
     command: [ "redis-server" ]
   user-manager-db:
     image: redis:latest
-    ports:
-      - 6377:6379
     command: [ "redis-server" ]
+
   user-manager:
-    build: /
+    image: user-manager
+    container_name: user-manager
+    ports:
+      - "8080:8080"
+    build:
+      context: ./
+      dockerfile: docker/management/Dockerfile
+    environment:
+      - USER_MANAGER_DB=redis://user-manager-db:6379
+      - API_URL=http://serv:8000
+      - PSEUDONYM_ENTRIES=pseudonym-entry
+      - PAIRING_GROUP=SS512
+      - CLIENT_BACKEND_URL=http://client:9090
   client:
-    build: /
-  vault:
-    build: /
+    image: client
+    ports:
+      - "9090:9090"
+    build:
+      context: ./
+      dockerfile: docker/clients/Dockerfile
+    environment:
+      - CLIENT_DB=redis://client-db:6379
+      - CLIENT_ID=1
+      - API_URL=http://serv:8000
+      - UM_URL=http://user-manager:8080
+      - PAIRING_GROUP=SS512
+  serv:
+    image: serv
+    container_name: serv
+    ports:
+      - "8000:8000"
+    build:
+      context: ./
+      dockerfile: docker/vault/Dockerfile
+    environment:
+      - API_DB=redis://api-db:6379
+      - PSEUDONYM_ENTRIES=pseudonym-entry
+      - PAIRING_GROUP=SS512

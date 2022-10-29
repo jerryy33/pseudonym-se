@@ -28,7 +28,9 @@ COPY poetry.lock pyproject.toml /code/
 
 # Project initialization:
 RUN poetry config virtualenvs.create false \
-    && poetry install --without charm --no-interaction --no-ansi
+    && poetry install --without charm --no-interaction --no-ansi --no-root
 
-# Creating folders, and files for a project:
-COPY . /code    
+COPY /management/backend /code   
+
+CMD ["uvicorn", "user_manager:app", "--host", "0.0.0.0", "--port", "8080"]    
+
