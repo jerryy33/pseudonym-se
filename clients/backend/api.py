@@ -56,7 +56,10 @@ def request_pseudonym(record: PseudonymRequest) -> List:
         List: a list containing pseudonyms and the matching record
     """
     # print(record)
-    key = DB.hget(f"users:{MY_ID}", "encryptionKey").encode()
+    key: str = DB.hget(f"users:{MY_ID}", "encryptionKey")
+    if key is None:
+        raise HTTPException(status_code=400, detail="User has not been enrolled yet")
+    key = key.encode()
     keywords = [record.data[key] for key in record.keywords if key in record.data]
     # print(keywords)
     matching_entries = search_for_record(keywords, record.is_fuzzy)

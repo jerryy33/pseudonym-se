@@ -15,7 +15,7 @@ async function searchForPseudonym(record, keywords, fuzzy) {
     return searchResults
 }
 
-async function submitForm() {
+export async function submitForm() {
     const usedAsKeywords = [this.firstNameIsKeyword, this.surnameIsKeyword, this.sidIsKeyword]
     const valuesDict = { "name": this.firstName, "surname": this.surname, "sid": this.sid }
     let keywords = []
