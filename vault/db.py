@@ -1,4 +1,4 @@
-""""""
+"""Connection to the database"""
 import urllib.parse
 import redis
 from constants import API_DB

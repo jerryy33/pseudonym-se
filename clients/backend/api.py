@@ -1,5 +1,5 @@
 """This module represent a data client that can request pseudonyms from a server"""
-from typing import List
+from typing import Dict, List, Tuple
 import pickle
 import requests
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
@@ -25,7 +25,19 @@ app.add_middleware(
 
 
 @app.put("/receiveSecurityDetails")
-def receive_security_details(details: SecurityDetails):
+def receive_security_details(details: SecurityDetails) -> int:
+    """Endpoint to receive security details
+
+    Args:
+        details (SecurityDetails): security details containing a query key,
+        a random seed and an encryption key
+
+    Raises:
+        HTTPException: if the received user_id doesnt equal own id
+
+    Returns:
+        int: added fields to the database
+    """
     if details.user_id != MY_ID:
         raise HTTPException(
             status_code=400,
@@ -44,16 +56,16 @@ def receive_security_details(details: SecurityDetails):
 
 
 @app.post("/requestPseudonym")
-def request_pseudonym(record: PseudonymRequest) -> List:
+def request_pseudonym(record: PseudonymRequest) -> List[Tuple[Dict, str]]:
     """Requests a pseudonym for a given data record, if no entry on the server is found
-    adds a new encrypted record to the server. If multiple record match, the user can choose the one
+    adds a new encrypted record to the server. If multiple records match, the user can choose the one
     thats actually correct
 
     Args:
-        record (Dict): a given data record as dictionary
+        record (PseudonymRequest): a given data record
 
     Returns:
-        List: a list containing pseudonyms and the matching record
+        List[Tuple[Dict, str]]: a list containing pseudonyms and the matching record
     """
     # print(record)
     key: str = DB.hget(f"users:{MY_ID}", "encryptionKey")
@@ -61,9 +73,7 @@ def request_pseudonym(record: PseudonymRequest) -> List:
         raise HTTPException(status_code=400, detail="User has not been enrolled yet")
     key = key.encode()
     keywords = [record.data[key] for key in record.keywords if key in record.data]
-    # print(keywords)
     matching_entries = search_for_record(keywords, record.is_fuzzy)
-    print(matching_entries)
     encrypter = SymmetricCryptoAbstraction(key)
     if not matching_entries:
         pseudonym, added_record = add_record(record, key, record.is_fuzzy)
@@ -83,7 +93,9 @@ def add_record(
     """Add an encrypted record to the vault
 
     Args:
-        record (str): a encrypted record
+        record (PseudonymRequest): a pseudonym request
+        enc_key (bytes): an encryption key to encrypt documents
+        enable_fuzzy_search (bool): if fuzzy indizes should be created
 
     Returns:
         bool: true if adding the record was successfull
@@ -101,10 +113,11 @@ def add_record(
 
 
 def search_for_record(keywords: List[str], fuzzy_search: bool) -> List:
-    """Searches for records in the vault and returns them if they match the search record
+    """Searches for records in the vault and returns them if they match the search words
 
     Args:
-        record (str): a record to search for
+        keywords (List[str]): a list of keywords to search for
+        fuzzy_search (bool): if the search should be fuzzy
 
     Returns:
         List: a list of matching records

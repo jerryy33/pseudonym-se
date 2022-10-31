@@ -30,20 +30,19 @@ def revoke_access(user_id: int) -> bool:
 # TODO check performance
 def search(user_id: int, queries: List[str]) -> List:
     """Searches for records that fit to the given query.
-    If a word is equal to search query is determined through simple equality checks.
+    If a word is equal to a search query is determined through simple equality checks.
     However since this search algorithm is used for searchable encryption the equality is
     based on bilinear pairing properties
 
     Args:
-        query (Tuple[int, Any]): a query containing the user id and a GROUP element computed
-        at the client side
+        user_id (int): user identifier
+        queries (List[str]): a list of queries
 
     Returns:
         List: contains all records that equal the search word.
-        None if no record was found or the user had no rights to search
+        None if no record was found
     """
     com_k = database.get(user_id)
-    # print(f"Got com key from database as {com_k}")
     if com_k is None:
         raise HTTPException(status_code=403, detail="User is not authorized to search")
     com_k = GROUP.deserialize(com_k.encode(), compression=False)
@@ -87,8 +86,20 @@ def search(user_id: int, queries: List[str]) -> List:
 def fuzzy_search(
     user_id: int, queries: List[List[Any]], expected_amount_of_keywords: int = 1
 ) -> List:
+    """Performs fuzzy search for the given queries, equality is based on a wildcard approach
+
+    Args:
+        user_id (int): user identifier
+        queries (List[List[Any]]): a list for each keyword containing a list of queries
+        expected_amount_of_keywords (int, optional): The amount of keywords to search for. Defaults to 1.
+
+    Raises:
+        HTTPException: if the user is not authorized to search
+
+    Returns:
+        List: a list of matching records
+    """
     com_k = database.get(user_id)
-    # print(f"Got com key from database as {com_k}")
     if com_k is None:
         raise HTTPException(status_code=403, detail="User is not authorized to search")
     com_k = GROUP.deserialize(com_k.encode(), compression=False)

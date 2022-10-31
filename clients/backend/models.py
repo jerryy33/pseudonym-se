@@ -1,10 +1,11 @@
 """Models used for API"""
-from typing import Any, Dict, List
+from typing import Dict, List
 from pydantic import BaseModel
 
 
 class PseudonymRequest(BaseModel):
-    """Model for a pseudonymm request, contains the actual data and a list of keywords"""
+    """Model for a pseudonymm request, contains the actual data a list of keywords and
+    if a search should be fuzzy or not"""
 
     data: Dict[str, str]
     keywords: List[str]

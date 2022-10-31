@@ -1,3 +1,4 @@
+"""Models used for the api"""
 from pydantic import BaseModel
 from typing import List
 

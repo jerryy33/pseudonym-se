@@ -20,7 +20,7 @@ def hs(
 
     Args:
         group (PairingGroup): pairing Group with a defined hash function
-        w (bytes): encoded keyword
+        object to hash (bytes): object to hash
         elementType(optional): type of the group to hash to. Allowed values are [G1, G2, ZR]
         seed (Optional[str], optional): A random seed. Defaults to None.
 

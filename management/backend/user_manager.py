@@ -27,7 +27,12 @@ redis = redis.Redis(host=db.hostname, port=db.port, db=0, decode_responses=True)
 
 
 @app.post("/setup")
-def start_setup():
+def start_setup() -> str:
+    """Starts the setup process and produces paramters to used to enroll future users
+
+    Returns:
+        str: a string indicating if the process was successful
+    """
     management_key, group_element_for_key, enc_key, seed = setup()
     redis.mset(
         mapping={
@@ -44,19 +49,27 @@ def start_setup():
 
 @app.post("/enroll/{user_id}")
 def enroll_user(user_id: int) -> bool:
+    """Enrolls a user for the given user id
+
+    Args:
+        user_id (int): integer representing the id of a user
+
+    Raises:
+        HTTPException: when the user is not known or the enroll process failed
+
+    Returns:
+        bool: if the enrollment was successful
+    """
     group_element_for_key = GROUP.deserialize(
         redis.get("group_element_for_key").encode(), compression=False
     )
     enc_key = redis.get("enc_key")
     seed = redis.get("seed")
-    print(group_element_for_key)
     user_detail = enroll(user_id, group_element_for_key)
-    print(f"Client list:{CLIENT_URL_LIST}", type(CLIENT_URL_LIST))
     client_url = next(
         (client["url"] for client in CLIENT_URL_LIST if int(client["id"]) == user_id),
         None,
     )
-    print(client_url)
     if client_url is None:
         raise HTTPException(
             status_code=400, detail="User is not known to the user-manager"
@@ -75,19 +88,26 @@ def enroll_user(user_id: int) -> bool:
     )
     if response.ok:
         res = response.json()
-        print(res)
         return res in (3, 0)
     raise HTTPException(status_code=response.status_code, detail=response.json())
 
 
 @app.post("/revoke")
 def revoke_user(user_id: int) -> bool:
+    """Revokes search rights for a user
+
+    Args:
+        user_id (int): id for a user
+
+    Returns:
+        bool: if the revocation was successful
+    """
     return revoke(user_id)
 
 
 def setup() -> SetupParams:
     """Executes the setup process for the complete system.
-    Will generate a bunch of system parameter necessary for searchable encryption.
+    Will generate a bunch of system parameters necessary for searchable encryption.
 
     Returns:
         SetupParams: System parameters ->
@@ -95,8 +115,6 @@ def setup() -> SetupParams:
         - x: the according GROUP element to key
         - e: symmetric encryption key for documents
         - s: random seed to use for hashing on the clients
-
-
     """
 
     # Generate encryption key e
@@ -124,14 +142,13 @@ def enroll(user_id: int, group_element: Any) -> Any:
 
     Args:
         user_id (int): A given user identifier
-        group_element (tuple): the GROUP element from the private key of this instance
+        group_element (Any): the group element from the private key of this instance
 
     Raises:
-        RuntimeError: If a adding a user to the vault failed
+        HttpException: if a user already exists or adding a new one failed
 
     Returns:
-        Tuple[bytes, bytes]:  a tuple containing a random element from ZR
-        and the seed generated in setup()
+        Any:  a random element from ZR
     """
     xu = GROUP.random(ZR)
     g = GROUP.random(G1)

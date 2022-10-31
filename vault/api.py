@@ -1,5 +1,5 @@
 """Api for storing, writing and searching searchable encrypted data"""
-from typing import List, Union
+from typing import Dict, List, Tuple, Union
 from fastapi import FastAPI, HTTPException
 from constants import PSEUDONYM_ENTRIES, GROUP  # pylint: disable=no-name-in-module
 from db import database  # pylint: disable=no-name-in-module
@@ -15,21 +15,24 @@ app = FastAPI()
 
 
 @app.post("/generateIndex")
-def gen_index(index_request: IndexRequest) -> bytes:
+def gen_index(index_request: IndexRequest) -> List[bytes]:
+    """Computes a part for generating indizes on an incoming IndexRequest
+
+    Args:
+        index_request (IndexRequest): a request for generation indices
+
+    Raises:
+        HTTPException: if no complementary key is found
+
+    Returns:
+        List[bytes]: a list of hashed keywords
+    """
     com_key = database.get(index_request.user_id)
-    print(com_key)
-    # print(f"Got comp key from database{com_key}")
-    # answer = GROUP.serialize(
-    #     GROUP.pair_prod(
-    #         GROUP.deserialize(hashed_keyword), GROUP.deserialize(com_key.encode())
-    #     )
-    # )
-    # print(f"Sending answer as {answer}, expected received value is {GROUP.deserialize(answer)}")
     if com_key is None:
         raise HTTPException(
             status_code=403, detail="User is not authorized to generate index"
         )
-    # print(f"comp key serialized as  {GROUP.deserialize(com_key.encode())}")
+
     hashed_keywords = [
         GROUP.serialize(
             GROUP.pair_prod(
@@ -44,7 +47,15 @@ def gen_index(index_request: IndexRequest) -> bytes:
 
 
 @app.post("/addRecord")
-def add_record(request: AddRequest) -> int:
+def add_record(request: AddRequest) -> Tuple[str, Dict]:
+    """Adds a new record to the database
+
+    Args:
+        request (AddRequest): a request for adding a new document
+
+    Returns:
+        Tuple[str, Dict]: a tuple containing the generated pseudonym and the corresponding record
+    """
     pseudonym = generate_pseudonym(request.record)
     database.incr("hash_name_index", 1)
     hash_index = database.get("hash_name_index")
@@ -53,7 +64,6 @@ def add_record(request: AddRequest) -> int:
     for keyword_number, index_list in enumerate(request.indices):
         for index_number, index in enumerate(index_list):
             combined_index = ",".join(index)
-            # print(combined_index, index)
             database.hset(
                 f"{PSEUDONYM_ENTRIES}:{hash_index}",
                 f"index:{keyword_number}: {index_number}",
@@ -67,12 +77,18 @@ def add_record(request: AddRequest) -> int:
 
 @app.post("/search")
 def search_records(request: SearchRequest) -> List:
-    # print(f"Received query_key as {query}, deserilized to {GROUP.deserialize(query)}")
+    """Searches for records that match the given search words
+
+    Args:
+        request (SearchRequest): a request to search for data
+
+    Returns:
+        List: a list of matching records
+    """
     search_queries = [
         [GROUP.deserialize(query.encode(), compression=False) for query in queries]
         for queries in request.queries
     ]
-    # print(search_queries)
     if request.is_fuzzy:
         return fuzzy_search(
             request.user_id, search_queries, request.expected_amount_of_keywords
@@ -82,12 +98,26 @@ def search_records(request: SearchRequest) -> List:
 
 @app.post("/revoke")
 def revoke(user_id: int) -> bool:
+    """Revokes search rights for a user id
+
+    Args:
+        user_id (int): a user identifier
+
+    Returns:
+        bool: if the revocation was successful
+    """
     return revoke_access(user_id)
 
 
 @app.post("/addUser")
 def add_user(user_id: int, comp_key: bytes) -> Union[bool, None]:
-    # set user_id as key and complementary key as value
-    # print(
-    #   f"Received comp key serialized as {comp_key}, is actually {GROUP.deserialize(comp_key)}")
+    """Adds a new user to the database
+
+    Args:
+        user_id (int): a user identifier
+        comp_key (bytes): a complementary key
+
+    Returns:
+        Union[bool, None]: if adding the user was successful
+    """
     return database.set(user_id, comp_key)
