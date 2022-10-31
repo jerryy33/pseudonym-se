@@ -33,6 +33,7 @@ RUN poetry config virtualenvs.create false \
     && poetry install --without charm --no-interaction --no-ansi --no-root
 
 COPY /clients/backend /code 
-
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9090"]    
+ARG PORT=9090
+ENV port=$PORT
+CMD ["sh", "-c","uvicorn api:app --host 0.0.0.0 --port ${port}"]    
 

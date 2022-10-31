@@ -5,7 +5,7 @@ from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 from charm.toolbox.pairinggroup import ZR
 import requests
 from models import PseudonymRequest
-
+from fastapi import HTTPException
 from hashes import hs, h
 
 from constants import GROUP, API_URL, MY_ID  # pylint: disable=no-name-in-module
@@ -14,7 +14,7 @@ from aliases import Document, Index  # pylint: disable=no-name-in-module
 from util import generate_random_string, generate_wildcard_list
 
 
-def gen_index(q_key: Any, keyword: List[str]) -> Index:
+def gen_indizes(q_key: Any, keywords: List[str]) -> List[Index]:
     """Generates a index used for searchable encryption.
     Will send a request to the vault to compute a part for the encryption key
 
@@ -25,45 +25,46 @@ def gen_index(q_key: Any, keyword: List[str]) -> Index:
     Returns:
         Index: a index for the keyword
     """
-    random_blind = GROUP.random(ZR)
-    index_request = hs(GROUP, keyword) ** random_blind
+    index_requests = []
+    for keyword in keywords:
+        random_blind = GROUP.random(ZR)
+        index_request = hs(GROUP, keyword) ** random_blind
+        index_requests.append(
+            GROUP.serialize(index_request, compression=False).decode()
+        )
     # print(
     #     f"Sending index request {index_request} serialized as"
     #     f"{GROUP.serialize(index_request, compression= False)}"
     # )
     # TODO maybe shorten this to a single request
-    index_answer = requests.get(
+    response = requests.post(
         f"{API_URL}/generateIndex",
-        params={
-            "user_id": MY_ID,
-            "hashed_keyword": GROUP.serialize(index_request, compression=False),
-        },
+        json={"user_id": MY_ID, "hashed_keywords": index_requests},
         timeout=10,
-    ).json()
+    )
+    if response.ok:
+        index_answer = response.json()
+    else:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
     # print(
     #     f"Received answer as {index_answer}, desiralized to"
     #     f"{GROUP.deserialize(index_answer.encode(), compression= False)}"
     # )
     # index_answer = GROUP.pair_prod(index_request[1], comp_key)
     # print(GROUP1.ismember((qk[0]/random_blind)))
-    k = h(
-        GROUP,
-        GROUP.deserialize(index_answer.encode(), compression=False)
-        ** (q_key / random_blind),
-    )
-    # print("Gen index key for enc", k)
-    index_encrypter = SymmetricCryptoAbstraction(k)
-    res = generate_random_string(16)
-    e_index = index_encrypter.encrypt(res)
-    return (res, e_index)
-
-
-def gen_indizes(query_key: Any, keywords: List[str]) -> List[Index]:
-    indices = []
-    for word in keywords:
-        i_w = gen_index(query_key, word)
-        indices.append(i_w)
-    return indices
+    indizes = []
+    for index in index_answer:
+        k = h(
+            GROUP,
+            GROUP.deserialize(index.encode(), compression=False)
+            ** (q_key / random_blind),
+        )
+        # print("Gen index key for enc", k)
+        index_encrypter = SymmetricCryptoAbstraction(k)
+        res = generate_random_string(16)
+        e_index = index_encrypter.encrypt(res)
+        indizes.append((res, e_index))
+    return indizes
 
 
 def write(

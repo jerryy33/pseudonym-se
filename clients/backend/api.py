@@ -115,7 +115,7 @@ def search_for_record(keywords: List[str], fuzzy_search: bool) -> List:
         wildcard_lists = generate_wildcard_list(keywords)
         for wildcard_list in wildcard_lists:
             user_id, queries = construct_query(
-                GROUP.deserialize(query_key.encode()), wildcard_list
+                GROUP.deserialize(query_key.encode(), compression=False), wildcard_list
             )
             serialized_queries = [
                 GROUP.serialize(query, compression=False).decode() for query in queries

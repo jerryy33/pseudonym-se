@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import redis
-from constants import USER_MANAGER_DB, API_URL, CLIENT_URL, GROUP, UA, UR
+from constants import USER_MANAGER_DB, API_URL, CLIENT_URL_LIST, GROUP, UA, UR
 from aliases import SetupParams
 
 app = FastAPI()
@@ -51,9 +51,18 @@ def enroll_user(user_id: int) -> bool:
     seed = redis.get("seed")
     print(group_element_for_key)
     user_detail = enroll(user_id, group_element_for_key)
-
+    print(f"Client list:{CLIENT_URL_LIST}", type(CLIENT_URL_LIST))
+    client_url = next(
+        (client["url"] for client in CLIENT_URL_LIST if int(client["id"]) == user_id),
+        None,
+    )
+    print(client_url)
+    if client_url is None:
+        raise HTTPException(
+            status_code=400, detail="User is not known to the user-manager"
+        )
     response = requests.put(
-        f"{CLIENT_URL}/receiveSecurityDetails",
+        f"{client_url}/receiveSecurityDetails",
         json={
             "query_key": GROUP.serialize(user_detail, compression=False).decode(),
             "seed": seed,

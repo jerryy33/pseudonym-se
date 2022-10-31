@@ -1,4 +1,5 @@
-const BACKEND_HOST = "http://localhost:8080"
+const BACKEND_HOST = import.meta.env.VITE_BACKEND_HOST
+console.log(BACKEND_HOST, import.meta.env.VITE_BACKEND_HOST)
 export async function enrollUser(userID) {
     console.log(userID)
     const response = await fetch(`${BACKEND_HOST}/enroll/${userID}`, { method: "POST" })

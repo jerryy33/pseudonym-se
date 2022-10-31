@@ -1,4 +1,4 @@
-const BACKEND_HOST = "http://localhost:9090"
+const BACKEND_HOST = import.meta.env.VITE_BACKEND_HOST
 async function searchForPseudonym(record, keywords, fuzzy) {
     const response = await fetch(`${BACKEND_HOST}/requestPseudonym`, {
         method: "POST",

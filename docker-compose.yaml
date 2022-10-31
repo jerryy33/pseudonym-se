@@ -8,6 +8,9 @@ services:
   client-db:
     image: redis:latest
     command: [ "redis-server" ]
+  client2-db:
+    image: redis:latest
+    command: [ "redis-server" ]
   user-manager-db:
     image: redis:latest
     command: [ "redis-server" ]
@@ -25,17 +28,36 @@ services:
       - API_URL=http://serv:8000
       - PSEUDONYM_ENTRIES=pseudonym-entry
       - PAIRING_GROUP=SS512
-      - CLIENT_BACKEND_URL=http://client:9090
+      - CLIENT_URL_ID_DICT=[{"url":"http://client:9090", "id":"1"},{"url":"http://client2:9091", "id":"2"}]
   client:
     image: client
+    container_name: client
     ports:
       - "9090:9090"
     build:
       context: ./
       dockerfile: docker/clients/Dockerfile
+      args:
+        - PORT=9090
     environment:
       - CLIENT_DB=redis://client-db:6379
       - CLIENT_ID=1
+      - API_URL=http://serv:8000
+      - UM_URL=http://user-manager:8080
+      - PAIRING_GROUP=SS512
+  client2:
+    image: client2
+    container_name: client2
+    ports:
+      - "9091:9091"
+    build:
+      context: ./
+      dockerfile: docker/clients/Dockerfile
+      args:
+        - PORT=9091
+    environment:
+      - CLIENT_DB=redis://client2-db:6379
+      - CLIENT_ID=2
       - API_URL=http://serv:8000
       - UM_URL=http://user-manager:8080
       - PAIRING_GROUP=SS512
@@ -51,15 +73,33 @@ services:
       - API_DB=redis://api-db:6379
       - PSEUDONYM_ENTRIES=pseudonym-entry
       - PAIRING_GROUP=SS512
+
   management-web:
     ports:
       - "5174:5174"
     build:
       context: ./
       dockerfile: docker/management/frontend/Dockerfile
+    environment:
+      - VITE_BACKEND_HOST=http://localhost:8080
+
   client-web:
     ports:
       - "5173:5173"
     build:
       context: ./
       dockerfile: docker/clients/frontend/Dockerfile
+      args:
+        - PORT=5173
+    environment:
+      - VITE_BACKEND_HOST=http://localhost:9090
+  client2-web:
+    ports:
+      - "5172:5172"
+    build:
+      context: ./
+      dockerfile: docker/clients/frontend/Dockerfile
+      args:
+        - PORT=5172
+    environment:
+      - VITE_BACKEND_HOST=http://localhost:9091

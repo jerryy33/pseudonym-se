@@ -5,4 +5,6 @@ COPY clients/frontend/package*.json /app
 WORKDIR /app
 RUN npm ci
 COPY clients/frontend .
-CMD ["npm", "run", "dev"]
+ARG PORT= 5173
+ENV port=${PORT}
+CMD ["sh", "-c", "npm run dev -- --port ${port}"]
