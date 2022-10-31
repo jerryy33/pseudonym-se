@@ -12,3 +12,8 @@ class SearchRequest(BaseModel):
 class AddRequest(BaseModel):
     record: str
     indices: List[List]
+
+
+class IndexRequest(BaseModel):
+    user_id: int
+    hashed_keywords: List[bytes]

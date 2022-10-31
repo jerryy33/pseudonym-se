@@ -5,14 +5,18 @@ from constants import PSEUDONYM_ENTRIES, GROUP  # pylint: disable=no-name-in-mod
 from db import database  # pylint: disable=no-name-in-module
 from se import revoke_access, search, fuzzy_search  # pylint: disable=no-name-in-module
 from pseudonyms import generate_pseudonym
-from models import AddRequest, SearchRequest  # pylint: disable=no-name-in-module
+from models import (
+    AddRequest,
+    SearchRequest,
+    IndexRequest,
+)
 
 app = FastAPI()
 
 
-@app.get("/generateIndex")
-def gen_index(user_id: int, hashed_keyword: bytes) -> bytes:
-    com_key = database.get(user_id)
+@app.post("/generateIndex")
+def gen_index(index_request: IndexRequest) -> bytes:
+    com_key = database.get(index_request.user_id)
     print(com_key)
     # print(f"Got comp key from database{com_key}")
     # answer = GROUP.serialize(
@@ -26,13 +30,17 @@ def gen_index(user_id: int, hashed_keyword: bytes) -> bytes:
             status_code=403, detail="User is not authorized to generate index"
         )
     # print(f"comp key serialized as  {GROUP.deserialize(com_key.encode())}")
-    return GROUP.serialize(
-        GROUP.pair_prod(
-            GROUP.deserialize(hashed_keyword, compression=False),
-            GROUP.deserialize(com_key.encode(), compression=False),
-        ),
-        compression=False,
-    )
+    hashed_keywords = [
+        GROUP.serialize(
+            GROUP.pair_prod(
+                GROUP.deserialize(keyword, compression=False),
+                GROUP.deserialize(com_key.encode()),
+            ),
+            compression=False,
+        )
+        for keyword in index_request.hashed_keywords
+    ]
+    return hashed_keywords
 
 
 @app.post("/addRecord")
