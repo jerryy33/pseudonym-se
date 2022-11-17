@@ -28,11 +28,12 @@ def revoke_access(user_id: int) -> bool:
 
 
 # TODO check performance
-def search(user_id: int, queries: List[str]) -> List:
+def search(user_id: int, queries: List[Any]) -> List:
     """Searches for records that fit to the given query.
     If a word is equal to a search query is determined through simple equality checks.
     However since this search algorithm is used for searchable encryption the equality is
     based on bilinear pairing properties
+
 
     Args:
         user_id (int): user identifier
@@ -47,7 +48,7 @@ def search(user_id: int, queries: List[str]) -> List:
         raise HTTPException(status_code=403, detail="User is not authorized to search")
     com_k = GROUP.deserialize(com_k.encode(), compression=False)
     decryption_keys: List[bytes] = []
-    for query in queries:
+    for query in queries[0]:
         decryption_keys.append(h(GROUP, GROUP.pair_prod(query, com_k)))
 
     results = []
@@ -55,13 +56,15 @@ def search(user_id: int, queries: List[str]) -> List:
     key: str
     for key in keys:
         query_hits = 0
+        print("set back and key is:", key)
         for index_key in decryption_keys:
             aes = SymmetricCryptoAbstraction(index_key)
 
-            # print(f"Key is:{key}")
+            # print(f"Key is:{index_key}")
             indices = database.hscan_iter(key, "index:*")
+            print(query_hits, "wow")
             for _, index in indices:
-                # print(f"Value is:{index}")
+                # print(f"Value is:{_}")
                 e_index = index.split(sep=",", maxsplit=1)
                 # print("list of indexes", e_index)
                 if len(e_index) != 2:
@@ -69,13 +72,12 @@ def search(user_id: int, queries: List[str]) -> List:
                     print("length was", len(e_index))
                     continue
                 inn: bytes = aes.decrypt(e_index[1])
-                # print("decoded:", inn)
-                if len(inn) < 0:
-                    print(inn, e_index[0], e_index[1])
+                print("decoded:", inn.decode(errors="replace"))
                 if e_index[0] == inn.decode(errors="replace"):
+                    print("hit")
                     query_hits += 1
-                    break
-        if len(queries) == query_hits and query_hits > 0:
+        print(query_hits, len(queries[0]))
+        if len(queries[0]) == query_hits and query_hits > 0:
             record = database.hget(key, "record")
             pseudonym = database.hget(key, "pseudonym")
             results.append((record, pseudonym))
@@ -107,17 +109,18 @@ def fuzzy_search(
     for q in queries:
         tmp = []
         for token in q:
+            print(token)
             tmp.append(h(GROUP, GROUP.pair_prod(token, com_k)))
         search_tokens.append(tmp)
 
     results = []
     keys = database.scan_iter(_type="HASH")
     key: str
-    index_containers = len(search_tokens)
+    # index_containers = len(search_tokens)
     for key in keys:
         query_hits = 0
         # print(f"Key is:{key}")
-        print(index_containers)
+        # print(index_containers)
         # TODO find a way to make 3 variable
         for index_number in range(0, 3):
             for search_token_keyword_list in search_tokens[:]:
@@ -144,7 +147,7 @@ def fuzzy_search(
                 else:
                     continue
                 break
-        # print(query_hits)
+        print(query_hits)
         if query_hits == expected_amount_of_keywords and query_hits > 0:
             record = database.hget(key, "record")
             pseudonym = database.hget(key, "pseudonym")

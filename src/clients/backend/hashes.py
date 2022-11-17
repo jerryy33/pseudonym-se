@@ -28,7 +28,7 @@ def hs(
         pairing.Element: a group element of type elementType
     """
 
-    # TODO find out how to integrate s
+    # TODO to integrate s we nee to modify the hash funtion itself, which takes a lot of work
     return group.hash(object_to_hash, type=element_type)
 
 

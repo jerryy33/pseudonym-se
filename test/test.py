@@ -174,7 +174,7 @@ def search(queries: Tuple[int, List[Any]], complementary_key: Any):
                     if index[0] == inn.decode(errors="replace"):
                         query_hits += 1
                         break
-            # print(query_hits)
+            print(query_hits)
             if len(queries[1]) == query_hits and query_hits > 0:
                 results.append(entry[0])
 
@@ -239,35 +239,34 @@ if __name__ == "__main__":
     test_dict = {
         "keywords": ["name", "surname", "socialSecurityNumber"],
         "data": {
-            "name": "Herbst",
+            "name": "Jeremy",
             "surname": "Herbst",
             "socialSecurityNumber": "1536363",
         },
     }
     # Exact Search Example
-    # UM_RANDOM, ENCRYPTER, SEED = setup()
-    # complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
-    # r = write(ENCRYPTER,query_key,complementary_key, test_dict, False)
-    # DB.append(r)
-    # Q = construct_query(query_key, ["1536363", "Herbsst", "Herbst"])
-    # search_results = search(Q, complementary_key)
-    # for result in search_results:
-    #     print(pickle.loads(ENCRYPTER.decrypt(result)))
-    # revoke(1)
-
-    # Fuzzy Search Example
     UM_RANDOM, ENCRYPTER, SEED = setup()
     complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
-    write(ENCRYPTER, query_key, complementary_key, test_dict, True)
+    write(ENCRYPTER, query_key, complementary_key, test_dict, False)
+    Q = construct_query(query_key, ["1536363", "Herbst"])
+    search_results = search(Q, complementary_key)
+    for result in search_results:
+        print(pickle.loads(ENCRYPTER.decrypt(result)))
+    revoke(1)
 
-    # order is important needs to be same as keywords
-    search_words = ["1536363s", "Herbst"]
-    wildcard_lists = generate_wildcard_list(search_words)
-    queries_pro_keyword = []
-    for wildcard_list in wildcard_lists:
-        user_id, queries = construct_query(query_key, wildcard_list)
-        queries_pro_keyword.append(queries)
-    results = fuzzy_search(user_id, queries_pro_keyword, len(search_words))
-    # print(results)
-    for r in results:
-        print(pickle.loads(ENCRYPTER.decrypt(r)))
+    # Fuzzy Search Example
+    # UM_RANDOM, ENCRYPTER, SEED = setup()
+    # complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
+    # write(ENCRYPTER, query_key, complementary_key, test_dict, True)
+
+    # # order is important needs to be same as keywords
+    # search_words = ["1536363s", "Herbst"]
+    # wildcard_lists = generate_wildcard_list(search_words)
+    # queries_pro_keyword = []
+    # for wildcard_list in wildcard_lists:
+    #     user_id, queries = construct_query(query_key, wildcard_list)
+    #     queries_pro_keyword.append(queries)
+    # results = fuzzy_search(user_id, queries_pro_keyword, len(search_words))
+    # # print(results)
+    # for r in results:
+    #     print(pickle.loads(ENCRYPTER.decrypt(r)))

@@ -37,7 +37,7 @@ def gen_index(index_request: IndexRequest) -> List[bytes]:
         GROUP.serialize(
             GROUP.pair_prod(
                 GROUP.deserialize(keyword, compression=False),
-                GROUP.deserialize(com_key.encode()),
+                GROUP.deserialize(com_key.encode(), compression=False),
             ),
             compression=False,
         )
@@ -93,7 +93,7 @@ def search_records(request: SearchRequest) -> List:
         return fuzzy_search(
             request.user_id, search_queries, request.expected_amount_of_keywords
         )
-    return search(request.user_id, search_queries[0])
+    return search(request.user_id, search_queries)
 
 
 @app.post("/revoke")

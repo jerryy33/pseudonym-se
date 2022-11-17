@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 import pickle
 import requests
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
+from charm.toolbox.pairinggroup import extract_key
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from util import generate_wildcard_list
@@ -47,7 +48,7 @@ def receive_security_details(details: SecurityDetails) -> int:
         f"users:{MY_ID}",
         mapping={
             "queryKey": details.query_key,
-            "seed": details.seed,
+            "seed": f"{extract_key(GROUP.deserialize(details.seed, compression=False))}",
             "encryptionKey": details.encryption_key,
         },
     )

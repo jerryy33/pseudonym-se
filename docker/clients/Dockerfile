@@ -32,7 +32,7 @@ COPY poetry.lock pyproject.toml /code/
 RUN poetry config virtualenvs.create false \
     && poetry install --without charm --no-interaction --no-ansi --no-root
 
-COPY /clients/backend /code 
+COPY /src/clients/backend /code 
 ARG PORT=9090
 ENV port=$PORT
 CMD ["sh", "-c","uvicorn api:app --host 0.0.0.0 --port ${port}"]    

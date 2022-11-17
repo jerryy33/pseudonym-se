@@ -64,7 +64,7 @@ def enroll_user(user_id: int) -> bool:
         redis.get("group_element_for_key").encode(), compression=False
     )
     enc_key = redis.get("enc_key")
-    seed = redis.get("seed")
+    seed = GROUP.deserialize(redis.get("seed").encode(), compression=False)
     user_detail = enroll(user_id, group_element_for_key)
     client_url = next(
         (client["url"] for client in CLIENT_URL_LIST if int(client["id"]) == user_id),
@@ -78,7 +78,7 @@ def enroll_user(user_id: int) -> bool:
         f"{client_url}/receiveSecurityDetails",
         json={
             "query_key": GROUP.serialize(user_detail, compression=False).decode(),
-            "seed": seed,
+            "seed": GROUP.serialize(seed, compression=False).decode(),
             # TODO for some reason this key cannot be decoded normally, maybe send the GROUP element
             # and call "extract_key" on the clients
             "encryption_key": f"{enc_key}",
@@ -126,7 +126,7 @@ def setup() -> SetupParams:
     # generate kum
     key = extract_key(x)
     # print(random, key)
-    s = GROUP.random(GT)
+    s = GROUP.random(G1)
     return (
         key,
         x,
