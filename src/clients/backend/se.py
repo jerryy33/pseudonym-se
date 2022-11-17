@@ -26,11 +26,11 @@ def gen_indizes(q_key: Any, keywords: List[str]) -> List[Index]:
         List[Index]: a list of indizes for the given keywords
     """
     index_requests = []
-    # key = DB.hget(f"users:{MY_ID}", "seed")
-    # seed=key.encode()
+    key = DB.hget(f"users:{MY_ID}", "seed")
+    seed = key.encode()
+    random_blind = GROUP.random(ZR)
     for keyword in keywords:
-        random_blind = GROUP.random(ZR)
-        index_request = hs(GROUP, keyword) ** random_blind
+        index_request = hs(GROUP, keyword, seed=seed) ** random_blind
         index_requests.append(
             GROUP.serialize(index_request, compression=False).decode()
         )
@@ -50,7 +50,6 @@ def gen_indizes(q_key: Any, keywords: List[str]) -> List[Index]:
             GROUP.deserialize(index.encode(), compression=False)
             ** (q_key / random_blind),
         )
-        print(k)
         index_encrypter = SymmetricCryptoAbstraction(k)
         res = generate_random_string(16)
         e_index = index_encrypter.encrypt(res)
@@ -99,9 +98,9 @@ def construct_query(q_key: Any, keywords: List[str]) -> Tuple[int, List[Any]]:
         Tuple[int, List[Any]]: a valid query containing the user id and a list of queries
     """
     queries = []
-    # key = DB.hget(f"users:{MY_ID}", "seed")
-    # seed=key.encode()
+    key = DB.hget(f"users:{MY_ID}", "seed")
+    seed = key.encode()
     for keyword in keywords:
-        query = hs(GROUP, keyword) ** q_key
+        query = hs(GROUP, keyword, seed=seed) ** q_key
         queries.append(query)
     return (MY_ID, queries)

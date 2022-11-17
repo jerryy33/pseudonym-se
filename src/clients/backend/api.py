@@ -72,9 +72,9 @@ def request_pseudonym(record: PseudonymRequest) -> List[Tuple[Dict, str]]:
     key: str = DB.hget(f"users:{MY_ID}", "encryptionKey")
     if key is None:
         raise HTTPException(status_code=400, detail="User has not been enrolled yet")
-    key = key.encode()
     keywords = [record.data[key] for key in record.keywords if key in record.data]
     matching_entries = search_for_record(keywords, record.is_fuzzy)
+    key = key.encode()
     encrypter = SymmetricCryptoAbstraction(key)
     if not matching_entries:
         pseudonym, added_record = add_record(record, key, record.is_fuzzy)

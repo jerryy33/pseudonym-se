@@ -1,5 +1,6 @@
 """This module provides hash functions that convert
 from or to a group Element to hashed value or new group element"""
+import hmac
 from hashlib import sha256
 from typing import Optional, Any
 from charm.toolbox.pairinggroup import PairingGroup, G1
@@ -29,7 +30,8 @@ def hs(
     """
 
     # TODO to integrate s we nee to modify the hash funtion itself, which takes a lot of work
-    return group.hash(object_to_hash, type=element_type)
+    keyed_hashed_object = hmac.digest(seed, object_to_hash.encode(), sha256)
+    return group.hash(keyed_hashed_object, type=element_type)
 
 
 def h(group: PairingGroup, group_element: Any) -> bytes:

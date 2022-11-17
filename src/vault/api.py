@@ -36,7 +36,7 @@ def gen_index(index_request: IndexRequest) -> List[bytes]:
     hashed_keywords = [
         GROUP.serialize(
             GROUP.pair_prod(
-                GROUP.deserialize(keyword, compression=False),
+                GROUP.deserialize(keyword.encode(), compression=False),
                 GROUP.deserialize(com_key.encode(), compression=False),
             ),
             compression=False,
@@ -85,10 +85,12 @@ def search_records(request: SearchRequest) -> List:
     Returns:
         List: a list of matching records
     """
+
     search_queries = [
         [GROUP.deserialize(query.encode(), compression=False) for query in queries]
         for queries in request.queries
     ]
+    print(search_queries, request.queries, sep="\n\n", end="\n\n")
     if request.is_fuzzy:
         return fuzzy_search(
             request.user_id, search_queries, request.expected_amount_of_keywords

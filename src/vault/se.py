@@ -48,7 +48,9 @@ def search(user_id: int, queries: List[Any]) -> List:
         raise HTTPException(status_code=403, detail="User is not authorized to search")
     com_k = GROUP.deserialize(com_k.encode(), compression=False)
     decryption_keys: List[bytes] = []
+    print(queries)
     for query in queries[0]:
+        print(query)
         decryption_keys.append(h(GROUP, GROUP.pair_prod(query, com_k)))
 
     results = []
@@ -58,11 +60,12 @@ def search(user_id: int, queries: List[Any]) -> List:
         query_hits = 0
         print("set back and key is:", key)
         for index_key in decryption_keys:
+            # print(index_key)
             aes = SymmetricCryptoAbstraction(index_key)
 
             # print(f"Key is:{index_key}")
             indices = database.hscan_iter(key, "index:*")
-            print(query_hits, "wow")
+            # print(query_hits, "wow")
             for _, index in indices:
                 # print(f"Value is:{_}")
                 e_index = index.split(sep=",", maxsplit=1)
@@ -72,11 +75,11 @@ def search(user_id: int, queries: List[Any]) -> List:
                     print("length was", len(e_index))
                     continue
                 inn: bytes = aes.decrypt(e_index[1])
-                print("decoded:", inn.decode(errors="replace"))
+                # print("decoded:", inn.decode(errors="replace"))
                 if e_index[0] == inn.decode(errors="replace"):
                     print("hit")
                     query_hits += 1
-        print(query_hits, len(queries[0]))
+        # print(query_hits, len(queries[0]))
         if len(queries[0]) == query_hits and query_hits > 0:
             record = database.hget(key, "record")
             pseudonym = database.hget(key, "pseudonym")

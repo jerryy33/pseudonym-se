@@ -17,4 +17,4 @@ class AddRequest(BaseModel):
 
 class IndexRequest(BaseModel):
     user_id: int
-    hashed_keywords: List[bytes]
+    hashed_keywords: List[str]
