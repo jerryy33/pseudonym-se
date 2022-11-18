@@ -23,6 +23,8 @@ pytest = "^7.1.3"
 pylint = "^2.15.3"
 black = "^22.8.0"
 requests-mock = "^1.10.0"
+line-profiler = "^4.0.1"
+locust = "^2.13.0"
 
 [tool.pylint.'MESSAGES CONTROL']
 extension-pkg-whitelist = "pydantic"
