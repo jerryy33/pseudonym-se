@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 from constants import GROUP
 from hashes import h
-from db import database  # pylint: disable=no-name-in-module
+from db import database
 
 
 def revoke_access(user_id: int) -> bool:
@@ -17,10 +17,8 @@ def revoke_access(user_id: int) -> bool:
         bool: true if the user had a single entry that was removed
     """
     u_comp_key = database.get(user_id)
-    print(f"Revoking user with key {u_comp_key}")
     if u_comp_key is not None:
         deleted_rows = database.delete(user_id)
-        print(f"Revoked {deleted_rows} rows")
         return deleted_rows == 1
     raise HTTPException(
         status_code=400, detail="User has already been revoked or couldn't be found"
@@ -48,9 +46,7 @@ def search(user_id: int, queries: List[Any]) -> List:
         raise HTTPException(status_code=403, detail="User is not authorized to search")
     com_k = GROUP.deserialize(com_k.encode(), compression=False)
     decryption_keys: List[bytes] = []
-    print(queries)
     for query in queries[0]:
-        print(query)
         decryption_keys.append(h(GROUP, GROUP.pair_prod(query, com_k)))
 
     results = []
@@ -58,33 +54,22 @@ def search(user_id: int, queries: List[Any]) -> List:
     key: str
     for key in keys:
         query_hits = 0
-        print("set back and key is:", key)
         for index_key in decryption_keys:
-            # print(index_key)
             aes = SymmetricCryptoAbstraction(index_key)
-
-            # print(f"Key is:{index_key}")
             indices = database.hscan_iter(key, "index:*")
-            # print(query_hits, "wow")
             for _, index in indices:
-                # print(f"Value is:{_}")
                 e_index = index.split(sep=",", maxsplit=1)
-                # print("list of indexes", e_index)
                 if len(e_index) != 2:
                     print("The key was not a expected index", e_index)
                     print("length was", len(e_index))
                     continue
                 inn: bytes = aes.decrypt(e_index[1])
-                # print("decoded:", inn.decode(errors="replace"))
                 if e_index[0] == inn.decode(errors="replace"):
-                    print("hit")
                     query_hits += 1
-        # print(query_hits, len(queries[0]))
         if len(queries[0]) == query_hits and query_hits > 0:
             record = database.hget(key, "record")
             pseudonym = database.hget(key, "pseudonym")
             results.append((record, pseudonym))
-    # print(f"results are: {results}")
     return results
 
 

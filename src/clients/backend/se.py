@@ -8,9 +8,9 @@ from models import PseudonymRequest
 from fastapi import HTTPException
 from hashes import hs, h
 
-from constants import GROUP, API_URL, MY_ID  # pylint: disable=no-name-in-module
+from constants import GROUP, API_URL, MY_ID
 from db import DB
-from aliases import Document, Index  # pylint: disable=no-name-in-module
+from aliases import Document, Index
 from util import generate_random_string, generate_wildcard_list
 
 

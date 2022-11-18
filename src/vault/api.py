@@ -1,9 +1,9 @@
 """Api for storing, writing and searching searchable encrypted data"""
 from typing import Dict, List, Tuple, Union
 from fastapi import FastAPI, HTTPException
-from constants import PSEUDONYM_ENTRIES, GROUP  # pylint: disable=no-name-in-module
-from db import database  # pylint: disable=no-name-in-module
-from se import revoke_access, search, fuzzy_search  # pylint: disable=no-name-in-module
+from constants import PSEUDONYM_ENTRIES, GROUP
+from db import database
+from se import revoke_access, search, fuzzy_search
 from pseudonyms import generate_pseudonym
 from models import (
     AddRequest,
@@ -59,7 +59,6 @@ def add_record(request: AddRequest) -> Tuple[str, Dict]:
     pseudonym = generate_pseudonym(request.record)
     database.incr("hash_name_index", 1)
     hash_index = database.get("hash_name_index")
-    print(hash_index, f"{PSEUDONYM_ENTRIES}:{hash_index}")
     # TODO use pipeline to make this secure for multiple users
     for keyword_number, index_list in enumerate(request.indices):
         for index_number, index in enumerate(index_list):
@@ -90,7 +89,6 @@ def search_records(request: SearchRequest) -> List:
         [GROUP.deserialize(query.encode(), compression=False) for query in queries]
         for queries in request.queries
     ]
-    print(search_queries, request.queries, sep="\n\n", end="\n\n")
     if request.is_fuzzy:
         return fuzzy_search(
             request.user_id, search_queries, request.expected_amount_of_keywords
