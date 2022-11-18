@@ -153,6 +153,29 @@ def construct_query(qk: Any, w: List) -> Tuple[int, List[Any]]:
     return (1, queries)
 
 
+# more optimized for performance
+def search_opt(queries: Tuple[int, List[Any]], complementary_key: Any):
+    search_tokens = []
+    for query in queries[1]:
+        search_tokens.append(h(GROUP.pair_prod(query, complementary_key)).digest())
+    results = []
+    if complementary_key in API_KEY_USER_ID_LIST[0]:
+        for entry in DB:
+            query_hits = 0
+            for token in search_tokens:
+                aes = SymmetricCryptoAbstraction(token)
+                for index in entry[1]:
+                    e_index: str = index[1]
+                    inn: bytes = aes.decrypt(e_index)
+                    if index[0] == inn.decode(errors="replace"):
+                        query_hits += 1
+                        break
+            if len(queries[1]) == query_hits and query_hits > 0:
+                results.append(entry[0])
+        return results
+    return None
+
+
 def search(queries: Tuple[int, List[Any]], complementary_key: Any):
     # print(comK1, comKU)
     results = []
@@ -174,7 +197,7 @@ def search(queries: Tuple[int, List[Any]], complementary_key: Any):
                     if index[0] == inn.decode(errors="replace"):
                         query_hits += 1
                         break
-            print(query_hits)
+            # print(query_hits)
             if len(queries[1]) == query_hits and query_hits > 0:
                 results.append(entry[0])
 
