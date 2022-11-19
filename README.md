@@ -18,7 +18,7 @@ There are two ways to start this project:
 1. Use Docker
 2. Local
 
-For both you need to clone this repo first. If you just want to test the functionalities there is a test.py file in the root directory where you can experiment with the system
+For both you need to clone this repo first. If you just want to test the functionalities there is a template_system.py file in the test directory where you can experiment with the system
 
 ---
 ## Start the project with docker
