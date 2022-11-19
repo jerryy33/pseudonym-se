@@ -2,7 +2,7 @@
 that want to request pseudonyms"""
 from typing import Any
 import urllib.parse
-from charm.toolbox.pairinggroup import ZR, G1, G2, GT, extract_key
+from charm.toolbox.pairinggroup import ZR, G1, G2, extract_key
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import requests
@@ -153,18 +153,14 @@ def enroll(user_id: int, group_element: Any) -> Any:
     xu = GROUP.random(ZR)
     g = GROUP.random(G1)
     com_k = g ** (group_element / xu)
-    # print(com_k)
     send_key: bytes = GROUP.serialize(com_k, compression=False)
-    print(f"Sending comp key{com_k} to serv serialized as {send_key}")
     successfull = requests.post(
         f"{API_URL}/addUser",
         params={"user_id": user_id, "comp_key": send_key},
         timeout=10,
     ).json()
-    print(f"Adding user ended with status {successfull}")
     if successfull:
         rows = redis.sadd(UA, user_id)
-        print(rows)
         if rows == 0:
             raise HTTPException(status_code=400, detail="User already exists")
     else:
