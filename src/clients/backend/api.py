@@ -67,7 +67,6 @@ def request_pseudonym(record: PseudonymRequest) -> List[Tuple[Dict, str]]:
     Returns:
         List[Tuple[Dict, str]]: a list containing pseudonyms and the matching record
     """
-    # print(record)
     key: str = DB.hget(f"users:{MY_ID}", "encryptionKey")
     if key is None:
         raise HTTPException(status_code=400, detail="User has not been enrolled yet")

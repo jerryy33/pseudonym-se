@@ -39,19 +39,14 @@ def generate_wildcard_list(words: Union[List, str]) -> List[List[str]]:
         wildcard_list = [words]
     else:
         wildcard_list = []
-    # print(words, wildcard_list)
     for word in words:
-        # print(word)
         keyword_wildcard_list = [word]
         for i in range(0, len(word) + 1):
             wildcard1 = word[:i] + "*" + word[i:]
-            # print("Wildcard1 is: ", wildcard1)
             keyword_wildcard_list.append(wildcard1)
             if i == len(word):
                 break
             wildcard2 = word[:i] + "*" + word[i + 1 :]
-            # print("Wildcard2 is: ", wildcard2)
-
             keyword_wildcard_list.append(wildcard2)
         wildcard_list.append(keyword_wildcard_list)
     return wildcard_list
