@@ -1,5 +1,13 @@
 import pickle
-from test.test import gen_index, setup, enroll, search, construct_query, revoke, write
+from tests.template_system import (
+    gen_index,
+    setup,
+    enroll,
+    search,
+    construct_query,
+    revoke,
+    write,
+)
 
 test_dict = {
     "keywords": ["name", "surname", "socialSecurityNumber"],
@@ -12,7 +20,7 @@ test_dict = {
 
 
 def test_gen_index():
-    UM_RANDOM, ENCRYPTER, SEED = setup()
+    UM_RANDOM, _, SEED = setup()
     complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
     random_string, encrypted_index = gen_index(query_key, complementary_key, "hallo")
     revoke(1)
@@ -21,7 +29,7 @@ def test_gen_index():
 
 
 def test_constructQuery():
-    UM_RANDOM, ENCRYPTER, SEED = setup()
+    UM_RANDOM, _, SEED = setup()
     _, query_key = enroll(1, UM_RANDOM, SEED)
 
     user_id, queries = construct_query(query_key, ["word1", "word2"])
@@ -43,7 +51,7 @@ def test_search():
     UM_RANDOM, ENCRYPTER, SEED = setup()
     comp_key, query_key = enroll(1, UM_RANDOM, SEED)
     write(ENCRYPTER, query_key, comp_key, test_dict, False)
-    query = construct_query(query_key, ["Herbst", "Jeremy", "1536363"])
+    _, query = construct_query(query_key, ["Herbst", "Jeremy", "1536363"])
 
     search_results = search(query, comp_key)
     results = [pickle.loads(ENCRYPTER.decrypt(res)) for res in search_results]

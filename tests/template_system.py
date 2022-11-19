@@ -21,7 +21,6 @@ UM_RANDOM: Any
 UA: List[int] = []
 UR: List[int] = []
 API_KEY_USER_ID_LIST: List[Tuple[int, str]] = []
-complementary_key: Any
 
 
 def hs(s: Any, w: Any):
@@ -29,8 +28,8 @@ def hs(s: Any, w: Any):
     return GROUP.hash(w, type=G1)
 
 
-def h(element_to_hash: Any):
-    return sha256(GROUP.serialize(element_to_hash, compression=False))
+def h(element_to_hash: Any) -> bytes:
+    return sha256(GROUP.serialize(element_to_hash, compression=False)).digest()
 
 
 def generate_wildcard_list(words: Union[List, str]) -> List[List[str]]:
@@ -78,11 +77,8 @@ def setup():
 
 def enroll(u: int, x: Any, seed: Any):
     xu = GROUP.random(ZR)
-    # print(xu)
     g = GROUP.random(G1)
     comp_key = g ** (x / xu)
-    # print(comK.type)
-    # print(f"Sending comp key{comK} to serv")
     API_KEY_USER_ID_LIST.append((comp_key, u))
     UA.append(u)
     return comp_key, (xu, seed)
@@ -91,10 +87,7 @@ def enroll(u: int, x: Any, seed: Any):
 def revoke(u: int):
     UA.remove(u)
     UR.append(u)
-    # comKU.remove(u)
-    # comKU.append((1, 333))
     entries = [item for item in API_KEY_USER_ID_LIST if item[1] == u]
-    # print(entries)
     for entry in entries:
         if entry in API_KEY_USER_ID_LIST:
             API_KEY_USER_ID_LIST.remove(entry)
@@ -105,7 +98,7 @@ def gen_index(qk: Any, comK: Any, word: str):
     index_request = (1, hs(None, word) ** random_blind)
 
     index_answer = GROUP.pair_prod(index_request[1], comK)
-    k = h(index_answer ** (qk[0] / random_blind)).digest()
+    k = h(index_answer ** (qk[0] / random_blind))
     kv = SymmetricCryptoAbstraction(k)
 
     res = "".join(
@@ -131,7 +124,6 @@ def write(
     fuzzy: bool,
 ) -> bool:
     keywords = list(d["data"].values())
-    # print(keywords)s
     if fuzzy:
         wildcard_lists = generate_wildcard_list(keywords)
         i_w = []
@@ -154,55 +146,44 @@ def construct_query(qk: Any, w: List) -> Tuple[int, List[Any]]:
 
 
 # more optimized for performance
-def search_opt(queries: Tuple[int, List[Any]], complementary_key: Any):
+def search_opt(queries: List[Any], complementary_key: Any):
     search_tokens = []
-    for query in queries[1]:
-        search_tokens.append(h(GROUP.pair_prod(query, complementary_key)).digest())
+    for query in queries:
+        search_tokens.append(h(GROUP.pair_prod(query, complementary_key)))
     results = []
-    if complementary_key in API_KEY_USER_ID_LIST[0]:
-        for entry in DB:
-            query_hits = 0
-            for token in search_tokens:
-                aes = SymmetricCryptoAbstraction(token)
-                for index in entry[1]:
-                    e_index: str = index[1]
-                    inn: bytes = aes.decrypt(e_index)
-                    if index[0] == inn.decode(errors="replace"):
-                        query_hits += 1
-                        break
-            if len(queries[1]) == query_hits and query_hits > 0:
-                results.append(entry[0])
-        return results
-    return None
+    if complementary_key not in API_KEY_USER_ID_LIST[0]:
+        return None
+    for document, indices in DB:
+        query_hits = 0
+        for token in search_tokens:
+            aes = SymmetricCryptoAbstraction(token)
+            for index, enc_index in indices:
+                inn: bytes = aes.decrypt(enc_index)
+                if index == inn.decode(errors="replace"):
+                    query_hits += 1
+                    break
+        if len(queries) == query_hits and query_hits > 0:
+            results.append(document)
+    return results
 
 
-def search(queries: Tuple[int, List[Any]], complementary_key: Any):
-    # print(comK1, comKU)
+def search(queries: List[Any], complementary_key: Any):
     results = []
-    if complementary_key in API_KEY_USER_ID_LIST[0]:
-        for entry in DB:
-            # print(entry)
-            query_hits = 0
-            # print(len(queries[1]), len(entry[1]))
-            for query in queries[1]:
-                for index in entry[1]:
-                    k1 = h(GROUP.pair_prod(query, complementary_key)).digest()
-                    # print(k1)
-                    # print(group1.pair_prod(query[1], comK1))
-                    aes = SymmetricCryptoAbstraction(k1)
-                    e_index: str = index[1]
-                    # print(aes.decrypt(e_index), e_index)
-                    inn: bytes = aes.decrypt(e_index)
-                    # print(inn, inn.decode())
-                    if index[0] == inn.decode(errors="replace"):
-                        query_hits += 1
-                        break
-            # print(query_hits)
-            if len(queries[1]) == query_hits and query_hits > 0:
-                results.append(entry[0])
-
-        return results
-    return None
+    if complementary_key not in API_KEY_USER_ID_LIST[0]:
+        return None
+    for document, indices in DB:
+        query_hits = 0
+        for query in queries:
+            for index, enc_index in indices:
+                k = h(GROUP.pair_prod(query, complementary_key))
+                encrypter = SymmetricCryptoAbstraction(k)
+                inn: bytes = encrypter.decrypt(enc_index)
+                if index == inn.decode(errors="replace"):
+                    query_hits += 1
+                    break
+        if len(queries) == query_hits and query_hits > 0:
+            results.append(document)
+    return results
 
 
 # TODO improve performance with breaks and return early (check if we can return after we have one result)
@@ -215,9 +196,7 @@ def fuzzy_search(
         for q in queries:
             keys_per_keyword = []
             for token in q:
-                keys_per_keyword.append(
-                    h(GROUP.pair_prod(token, complementary_key)).digest()
-                )
+                keys_per_keyword.append(h(GROUP.pair_prod(token, complementary_key)))
             keys.append(keys_per_keyword)
 
         a = []
@@ -271,8 +250,8 @@ if __name__ == "__main__":
     UM_RANDOM, ENCRYPTER, SEED = setup()
     complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
     write(ENCRYPTER, query_key, complementary_key, test_dict, False)
-    Q = construct_query(query_key, ["1536363", "Herbst"])
-    search_results = search(Q, complementary_key)
+    _, q = construct_query(query_key, ["1536363", "Herbst"])
+    search_results = search(q, complementary_key)
     for result in search_results:
         print(pickle.loads(ENCRYPTER.decrypt(result)))
     revoke(1)
@@ -282,7 +261,6 @@ if __name__ == "__main__":
     # complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
     # write(ENCRYPTER, query_key, complementary_key, test_dict, True)
 
-    # # order is important needs to be same as keywords
     # search_words = ["1536363s", "Herbst"]
     # wildcard_lists = generate_wildcard_list(search_words)
     # queries_pro_keyword = []

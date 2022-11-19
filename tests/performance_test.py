@@ -1,4 +1,4 @@
-from test.test import (
+from tests.template_system import (
     setup,
     enroll,
     construct_query,
@@ -35,7 +35,7 @@ def test_performance_search():
 
     query = construct_query(query_key, ["Herbst", "Jeremy", "1536363"])
 
-    for _ in range(0, 10000):
+    for _ in range(0, 1000):
         write(ENCRYPTER, query_key, complementary_key, test_dict, False)
     start = time.time()
     search(queries=query, complementary_key=complementary_key)
@@ -47,7 +47,7 @@ def test_performance_search_opt():
     UM_RANDOM, ENCRYPTER, SEED = setup()
     complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
 
-    query = construct_query(query_key, ["Herbst", "Jeremy", "1536363"])
+    _, query = construct_query(query_key, ["Herbst", "Jeremy", "1536363"])
 
     for _ in range(0, 1000):
         write(ENCRYPTER, query_key, complementary_key, test_dict, False)
