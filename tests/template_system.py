@@ -181,55 +181,40 @@ def search(queries: List[Any], complementary_key: Any):
     return results
 
 
-# TODO improve performance with breaks and return early (check if we can return after we have one result)
-def fuzzy_search(
-    user_id: int, queries: List[List[str]], expected_amount_of_keywords: int = 1
-):
-    print(len(queries))
-    if complementary_key in API_KEY_USER_ID_LIST[0]:
-        keys = []
-        for q in queries:
-            keys_per_keyword = []
-            for token in q:
-                keys_per_keyword.append(h(GROUP.pair_prod(token, complementary_key)))
-            keys.append(keys_per_keyword)
+def fuzzy_search(queries: List[List[str]], expected_amount_of_keywords: int = 1):
+    if complementary_key not in API_KEY_USER_ID_LIST[0]:
+        return None
+    keys = []
+    for q in queries:
+        keys_per_keyword = []
+        for token in q:
+            keys_per_keyword.append(h(GROUP.pair_prod(token, complementary_key)))
+        keys.append(keys_per_keyword)
 
-        a = []
-        for entry in DB:
-            indices_lists = entry[1]
-            query_hits = 0
-            print(len(indices_lists), len(keys))
-            for keyword_index_list in indices_lists:
-                for token_list_for_keyword in keys[:]:
-                    for index in keyword_index_list:
-                        for key in token_list_for_keyword:
-                            aes = SymmetricCryptoAbstraction(key)
-                            e_index: str = index[1]
-                            # print(index, key)
-                            inn: bytes = aes.decrypt(e_index)
-                            # print(index[0])
-                            if index[0] == inn.decode(errors="replace"):
-                                query_hits += 1
-                                # print(f"hit {query_hits}")
-                                keys.remove(token_list_for_keyword)
-                                break
-                        else:
-                            continue
-                        break
+    a = []
+    for entry in DB:
+        indices_lists = entry[1]
+        query_hits = 0
+        for keyword_index_list in indices_lists:
+            for token_list_for_keyword in keys[:]:
+                for index in keyword_index_list:
+                    for key in token_list_for_keyword:
+                        aes = SymmetricCryptoAbstraction(key)
+                        e_index: str = index[1]
+                        inn: bytes = aes.decrypt(e_index)
+                        if index[0] == inn.decode(errors="replace"):
+                            query_hits += 1
+                            keys.remove(token_list_for_keyword)
+                            break
                     else:
                         continue
                     break
-            print(
-                query_hits,
-                expected_amount_of_keywords,
-                len(queries),
-                len(keyword_index_list),
-                len(indices_lists),
-            )
-            if query_hits > 0 and query_hits == expected_amount_of_keywords:
-                a.append(entry[0])
-        return a
-    return None
+                else:
+                    continue
+                break
+        if query_hits > 0 and query_hits == expected_amount_of_keywords:
+            a.append(entry[0])
+    return a
 
 
 if __name__ == "__main__":
@@ -262,7 +247,6 @@ if __name__ == "__main__":
     # for wildcard_list in wildcard_lists:
     #     user_id, queries = construct_query(query_key, wildcard_list)
     #     queries_pro_keyword.append(queries)
-    # results = fuzzy_search(user_id, queries_pro_keyword, len(search_words))
-    # # print(results)
+    # results = fuzzy_search(queries_pro_keyword, len(search_words))
     # for r in results:
     #     print(pickle.loads(ENCRYPTER.decrypt(r)))

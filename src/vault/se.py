@@ -97,18 +97,14 @@ def fuzzy_search(
     for q in queries:
         tmp = []
         for token in q:
-            print(token)
             tmp.append(h(GROUP, GROUP.pair_prod(token, com_k)))
         search_tokens.append(tmp)
 
     results = []
     keys = database.scan_iter(_type="HASH")
     key: str
-    # index_containers = len(search_tokens)
     for key in keys:
         query_hits = 0
-        # print(f"Key is:{key}")
-        # print(index_containers)
         # TODO find a way to make 3 variable
         for index_number in range(0, 3):
             for search_token_keyword_list in search_tokens[:]:
@@ -117,9 +113,7 @@ def fuzzy_search(
                 for _, index in indices:
                     for search_token in search_token_keyword_list:
                         aes = SymmetricCryptoAbstraction(search_token)
-                        # print(f"Value is:{index} and key is {_}")
                         e_index = index.split(sep=",", maxsplit=1)
-                        # print("list of indexes", e_index)
                         if len(e_index) != 2:
                             print("The key was not a expected index", e_index)
                             print("length was", len(e_index))
@@ -135,10 +129,8 @@ def fuzzy_search(
                 else:
                     continue
                 break
-        print(query_hits)
         if query_hits == expected_amount_of_keywords and query_hits > 0:
             record = database.hget(key, "record")
             pseudonym = database.hget(key, "pseudonym")
             results.append((record, pseudonym))
-    # print(f"results are: {results}")
     return results

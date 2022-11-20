@@ -125,7 +125,6 @@ def setup() -> SetupParams:
     x = GROUP.random(ZR)
     # generate kum
     key = extract_key(x)
-    # print(random, key)
     s = GROUP.random(G1)
     return (
         key,
