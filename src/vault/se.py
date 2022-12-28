@@ -25,7 +25,6 @@ def revoke_access(user_id: int) -> bool:
     )
 
 
-# TODO check performance
 def search(user_id: int, queries: List[Any]) -> List:
     """Searches for records that fit to the given query.
     If a word is equal to a search query is determined through simple equality checks.

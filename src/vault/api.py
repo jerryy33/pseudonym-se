@@ -59,7 +59,7 @@ def add_record(request: AddRequest) -> Tuple[str, Dict]:
     pseudonym = generate_pseudonym(request.record)
     database.incr("hash_name_index", 1)
     hash_index = database.get("hash_name_index")
-    # TODO use pipeline to make this secure for multiple users
+
     for keyword_number, index_list in enumerate(request.indices):
         for index_number, index in enumerate(index_list):
             combined_index = ",".join(index)

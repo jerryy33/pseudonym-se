@@ -6,6 +6,7 @@ Notes:
 """
 from typing import Any, Dict, List, Tuple, Union
 import pickle
+import hmac
 import secrets
 import string
 from hashlib import sha256
@@ -24,8 +25,8 @@ API_KEY_USER_ID_LIST: List[Tuple[int, str]] = []
 
 
 def hs(s: Any, w: Any):
-    # TODO find out how to integrate s
-    return GROUP.hash(w, type=G1)
+    keyed_hashed_object = hmac.digest(extract_key(s), w.encode(), sha256)
+    return GROUP.hash(keyed_hashed_object, type=G1)
 
 
 def h(element_to_hash: Any) -> bytes:
@@ -88,9 +89,9 @@ def revoke(u: int):
             API_KEY_USER_ID_LIST.remove(entry)
 
 
-def gen_index(qk: Any, comK: Any, word: str):
+def gen_index(qk: Any, comK: Any, word: str, s: Any):
     random_blind = GROUP.random(ZR)
-    index_request = (1, hs(None, word) ** random_blind)
+    index_request = (1, hs(s, word) ** random_blind)
 
     index_answer = GROUP.pair_prod(index_request[1], comK)
     k = h(index_answer ** (qk[0] / random_blind))
@@ -103,10 +104,12 @@ def gen_index(qk: Any, comK: Any, word: str):
     return (res, e_index)
 
 
-def gen_indizes(qk: Any, keywords: List[str], comK: Any) -> List[Tuple[str, str]]:
+def gen_indizes(
+    qk: Any, keywords: List[str], comK: Any, s: Any
+) -> List[Tuple[str, str]]:
     indices = []
     for word in keywords:
-        i_w = gen_index(qk, comK, word)
+        i_w = gen_index(qk, comK, word, s)
         indices.append(i_w)
     return indices
 
@@ -115,6 +118,7 @@ def write(
     e: SymmetricCryptoAbstraction,
     query_key: Any,
     complementary_key: Any,
+    s: Any,
     d: Dict,
     fuzzy: bool,
 ) -> bool:
@@ -123,19 +127,21 @@ def write(
         wildcard_lists = generate_wildcard_list(keywords)
         i_w = []
         for wildcard_keyword_list in wildcard_lists:
-            i_w.append(gen_indizes(query_key, wildcard_keyword_list, complementary_key))
+            i_w.append(
+                gen_indizes(query_key, wildcard_keyword_list, complementary_key, s)
+            )
     else:
-        i_w = gen_indizes(query_key, keywords, complementary_key)
+        i_w = gen_indizes(query_key, keywords, complementary_key, s)
     encoded_dict = pickle.dumps(d["data"])
     ct = e.encrypt(encoded_dict)
     DB.append((ct, i_w))
     return True
 
 
-def construct_query(qk: Any, w: List) -> Tuple[int, List[Any]]:
+def construct_query(qk: Any, w: List, s: Any) -> Tuple[int, List[Any]]:
     queries = []
     for word in w:
-        query = hs(None, word) ** qk[0]
+        query = hs(s, word) ** qk[0]
         queries.append(query)
     return (1, queries)
 
@@ -229,8 +235,8 @@ if __name__ == "__main__":
     # Exact Search Example
     UM_RANDOM, ENCRYPTER, SEED = setup()
     complementary_key, query_key = enroll(1, UM_RANDOM, SEED)
-    write(ENCRYPTER, query_key, complementary_key, test_dict, False)
-    _, q = construct_query(query_key, ["1536363", "Herbst"])
+    write(ENCRYPTER, query_key, complementary_key, SEED, test_dict, False)
+    _, q = construct_query(query_key, ["1536363", "Herbst"], SEED)
     search_results = search(q, complementary_key)
     for result in search_results:
         print(pickle.loads(ENCRYPTER.decrypt(result)))

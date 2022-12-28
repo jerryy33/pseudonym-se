@@ -29,7 +29,6 @@ def hs(
         pairing.Element: a group element of type elementType
     """
 
-    # TODO to integrate s we nee to modify the hash funtion itself, which takes a lot of work
     keyed_hashed_object = hmac.digest(seed, object_to_hash.encode(), sha256)
     return group.hash(keyed_hashed_object, type=element_type)
 

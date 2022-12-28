@@ -79,8 +79,6 @@ def enroll_user(user_id: int) -> bool:
         json={
             "query_key": GROUP.serialize(user_detail, compression=False).decode(),
             "seed": GROUP.serialize(seed, compression=False).decode(),
-            # TODO for some reason this key cannot be decoded normally, maybe send the GROUP element
-            # and call "extract_key" on the clients
             "encryption_key": f"{enc_key}",
             "user_id": user_id,
         },
