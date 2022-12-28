@@ -104,7 +104,6 @@ def fuzzy_search(
     key: str
     for key in keys:
         query_hits = 0
-        # TODO find a way to make 3 variable
         for index_number in range(0, 3):
             for search_token_keyword_list in search_tokens[:]:
                 indices = database.hscan_iter(key, f"index:{index_number}:*")

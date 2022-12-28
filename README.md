@@ -1,6 +1,8 @@
-# Pseudonymisation Service
+# Pseudonym-Service
+This project is a prototype to test a Pseudonym-Service. This service uses *Searchable encryption* to keep the data encrypted on the server while also making it accessible for users. Users can request pseudonyms from the vault by sending a search request that contains data that needs to be pseudonymized. To ensure that all pseudonyms are globally unique, meaning every user gets the same pseudonym for identical data, the vault saves the encrypted data and compares for every request if the pseudonym needs to be generated or if it already exists.
 
-### Built with
+The search supports multiple keywords and/or a fuzzy search which counteracts typos or different spellings.
+## Built with
  - [fastapi](https://fastapi.tiangolo.com/) 
  - [charm-crypto](https://github.com/JHUISI/charm)
  - [Alpine.js](https://alpinejs.dev/)
@@ -11,17 +13,19 @@
 
 ---
 
-# Getting started
+## Getting started
 
 There are two ways to start this project:
 
 1. Use Docker
 2. Local
 
-For both you need to clone this repo first. If you just want to test the functionalities there is a template_system.py file in the test directory where you can experiment with the system
+For both you need to clone this repo first. If you just want to test the functionalities there is a template_system.py file in the test directory where you can experiment with the system.
+
+Otherwise a typical use case would be to access the user-manager interface, click the setup button and enroll a user with id 1. Then change to the client interface and try to search for some data
 
 ---
-## Start the project with docker
+### Start the project with docker
 Install docker if you dont have it already.
 Then open a terminal in the top level directory and type:
 ```
@@ -35,7 +39,7 @@ You can now check out the components:
 2. User-Management frontend at http://localhost:5174
 3. Optional: A second client will run at http://localhost:5172 to show the multi-user capabilities
 ---
-## Start the project locally
+### Start the project locally
 If you want to start every component locally and dont use docker it gets a lot more complicated:
 
 #### Requirements:
@@ -111,3 +115,12 @@ docker compose up
 This will start 3 (one for each component) redis databases on different ports.
 
 ---
+
+## Docs
+
+Fast Api provides automatic documentation for all REST-APIs, they can be found under the `/docs` url. For example the docs for the client backend can be found under http://localhost:9090/docs
+
+---
+## License
+
+Distributed under the MIT License. See `LICENSE.txt` for more information.
